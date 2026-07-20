@@ -1,0 +1,19 @@
+# dependencies
+node_modules/
+
+# builds
+client/.next/
+server/dist/
+*.tsbuildinfo
+
+# environment files — secrets
+.env
+.env.*
+
+# editor & AI-assistant local config
+.vscode/
+.claude/
+
+# OS junk
+.DS_Store
+Thumbs.db
