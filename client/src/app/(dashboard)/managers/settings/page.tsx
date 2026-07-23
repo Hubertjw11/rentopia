@@ -3,13 +3,13 @@
 import SettingsForm from "@/components/SettingsForm";
 import {
   useGetAuthUserQuery,
-  useUpdateManagerSettingseMutation,
+  useUpdateManagerSettingsMutation,
 } from "@/state/api";
 import React from "react";
 
 const ManagerSettings = () => {
   const { data: authUser, isLoading } = useGetAuthUserQuery();
-  const [updateManager] = useUpdateManagerSettingseMutation();
+  const [updateManager] = useUpdateManagerSettingsMutation();
 
   if (isLoading) return <>Loading...</>;
 

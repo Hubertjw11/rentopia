@@ -35,14 +35,14 @@ const ImagePreviews = ({ images }: ImagePreviewsProps) => {
       ))}
       <button
         onClick={handlePrev}
-        className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-primary-700 bg-opacity-50 p-2 rounded-full focus:outline-none focus:ring focus:ring-secondary-300"
+        className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-primary-700/50 p-2 rounded-full focus:outline-none focus:ring focus:ring-secondary-300"
         aria-label="Previous Image"
       >
         <ChevronLeft className="text-white" />
       </button>
       <button
         onClick={handleNext}
-        className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-primary-700 bg-opacity-50 p-2 rounded-full focus:outline-none focus:ring focus:ring-secondary-300"
+        className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-primary-700/50 p-2 rounded-full focus:outline-none focus:ring focus:ring-secondary-300"
         aria-label="Previous Image"
       >
         <ChevronRight className="text-white" />
@@ -52,4 +52,3 @@ const ImagePreviews = ({ images }: ImagePreviewsProps) => {
 };
 
 export default ImagePreviews;
-ImagePreviews;
