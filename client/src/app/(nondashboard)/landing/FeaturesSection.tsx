@@ -58,7 +58,7 @@ const FeaturesSection = () => {
                   ][index]
                 }
                 linkText={["Explore", "Search", "Discover"][index]}
-                linkHref ={["/explore", "/search", "/discover"][index]}
+                linkHref={["/search", "/search", "/search"][index]}
               />
             </motion.div>
           ))}
@@ -81,7 +81,7 @@ const FeatureCard = ({
   linkText: string;
   linkHref: string;
 }) => (
-  <div className="text-center">
+  <div className="text-center flex flex-col h-full">
     <div className="p-4 rounded-lg mb-4 flex items-center justify-center h-48">
       <Image
         src={imageSrc}
@@ -95,7 +95,7 @@ const FeatureCard = ({
     <p className="mb-4">{description}</p>
     <Link
       href={linkHref}
-      className="inline-block border border-gray-300 rounded px-4 py-2 hover:bg-gray-100"
+      className="inline-block border border-gray-300 rounded px-4 py-2 hover:bg-gray-100 mt-auto mx-auto"
       scroll={false}
     >
       {linkText}

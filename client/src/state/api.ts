@@ -1,11 +1,12 @@
 import { cleanParams, createNewUserInDatabase, withToast } from "@/lib/utils";
 import {
-  Application,
-  Lease,
   Manager,
   Payment,
+  PaymentMethod,
   Property,
   Tenant,
+  Lease,
+  Application,
 } from "@/types/prismaTypes";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { fetchAuthSession, getCurrentUser } from "aws-amplify/auth";
@@ -32,6 +33,7 @@ export const api = createApi({
     "Leases",
     "Payments",
     "Applications",
+    "PaymentMethods",
   ],
   endpoints: (build) => ({
     getAuthUser: build.query<User, void>({
@@ -281,7 +283,7 @@ export const api = createApi({
         });
       },
     }),
-    
+
     getPayments: build.query<Payment[], number>({
       query: (leaseId) => `leases/${leaseId}/payments`,
       providesTags: ["Payments"],
@@ -348,6 +350,53 @@ export const api = createApi({
         });
       },
     }),
+
+    // payment method endpoints
+    getPaymentMethods: build.query<PaymentMethod[], string>({
+      query: (cognitoId) => `tenants/${cognitoId}/payment-methods`,
+      providesTags: ["PaymentMethods"],
+    }),
+
+    createSetupIntent: build.mutation<{ clientSecret: string }, string>({
+      query: (cognitoId) => ({
+        url: `tenants/${cognitoId}/payment-methods/setup-intent`,
+        method: "POST",
+      }),
+    }),
+
+    savePaymentMethod: build.mutation<
+      PaymentMethod,
+      { cognitoId: string; stripePaymentMethodId: string }
+    >({
+      query: ({ cognitoId, stripePaymentMethodId }) => ({
+        url: `tenants/${cognitoId}/payment-methods`,
+        method: "POST",
+        body: { stripePaymentMethodId },
+      }),
+      invalidatesTags: ["PaymentMethods"],
+    }),
+
+    setDefaultPaymentMethod: build.mutation<
+      PaymentMethod[],
+      { cognitoId: string; id: number }
+    >({
+      query: ({ cognitoId, id }) => ({
+        url: `tenants/${cognitoId}/payment-methods/${id}/default`,
+        method: "PUT",
+      }),
+      invalidatesTags: ["PaymentMethods"],
+    }),
+
+    deletePaymentMethod: build.mutation<
+      { message: string },
+      { cognitoId: string; id: number }
+    >({
+      query: ({ cognitoId, id }) => ({
+        url: `tenants/${cognitoId}/payment-methods/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["PaymentMethods"],
+    }),
   }),
 });
 
@@ -369,4 +418,9 @@ export const {
   useGetApplicationsQuery,
   useUpdateApplicationStatusMutation,
   useCreateApplicationMutation,
+  useGetPaymentMethodsQuery,
+  useCreateSetupIntentMutation,
+  useSavePaymentMethodMutation,
+  useSetDefaultPaymentMethodMutation,
+  useDeletePaymentMethodMutation,
 } = api;

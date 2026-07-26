@@ -20,7 +20,7 @@ import { useAppSelector } from "@/state/redux";
 import { debounce } from "lodash";
 import { Search } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 
 const FiltersFull = () => {
@@ -28,10 +28,14 @@ const FiltersFull = () => {
   const router = useRouter();
   const pathname = usePathname();
   const filters = useAppSelector((state) => state.global.filters);
-  const [localFilters, setLocalFilters] = useState(initialState.filters);
+  const [localFilters, setLocalFilters] = useState(filters);
   const isFiltersFullOpen = useAppSelector(
     (state) => state.global.isFiltersFullOpen,
   );
+
+  useEffect(() => {
+    setLocalFilters(filters);
+  }, [filters]);
 
   const updateURL = debounce((newFilters: FiltersState) => {
     const cleanFilters = cleanParams(newFilters);
@@ -47,9 +51,34 @@ const FiltersFull = () => {
     router.push(`${pathname}?${updatedSearchParams.toString()}`);
   });
 
-  const handleSubmit = () => {
-    dispatch(setFilters(localFilters));
-    updateURL(localFilters);
+  const handleSubmit = async () => {
+    let filtersToApply = localFilters;
+    if (
+      localFilters.location.trim() &&
+      localFilters.location !== filters.location
+    ) {
+      try {
+        const response = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+            localFilters.location,
+          )}.json?access_token=${
+            process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
+          }&fuzzyMatch=true`,
+        );
+        const data = await response.json();
+        if (data.features && data.features.length > 0) {
+          const [lng, lat] = data.features[0].center;
+          filtersToApply = {
+            ...localFilters,
+            coordinates: [lng, lat] as [number, number],
+          };
+        }
+      } catch (err) {
+        console.error("Error search location:", err);
+      }
+    }
+    dispatch(setFilters(filtersToApply));
+    updateURL(filtersToApply);
   };
 
   const handleReset = () => {
@@ -71,7 +100,7 @@ const FiltersFull = () => {
     try {
       const response = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-          localFilters.location
+          localFilters.location,
         )}.json?access_token=${
           process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
         }&fuzzyMatch=true`,
@@ -100,7 +129,7 @@ const FiltersFull = () => {
           <div className="flex items-center">
             <Input
               placeholder="Enter Location"
-              value={filters.location}
+              value={localFilters.location}
               onChange={(e) =>
                 setLocalFilters((prev) => ({
                   ...prev,

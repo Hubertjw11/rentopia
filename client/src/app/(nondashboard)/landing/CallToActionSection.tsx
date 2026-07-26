@@ -4,8 +4,11 @@ import React from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useGetAuthUserQuery } from "@/state/api";
 
 const CallToActionSection = () => {
+  const { data: authUser } = useGetAuthUserQuery();
+
   return (
     <div className="relative py-24">
       <Image
@@ -40,13 +43,15 @@ const CallToActionSection = () => {
               >
                 Search
               </button>
-              <Link
-                href="/signup"
-                className="inline-block text-white bg-secondary-500 rounded-lg px-6 py-3 font-semibold hover:bg-secondary-600"
-                scroll={false}
-              >
-                Sign Up
-              </Link>
+              {!authUser && (
+                <Link
+                  href="/signup"
+                  className="inline-block text-white bg-secondary-500 rounded-lg px-6 py-3 font-semibold hover:bg-secondary-600"
+                  scroll={false}
+                >
+                  Sign Up
+                </Link>
+              )}
             </div>
           </div>
         </div>

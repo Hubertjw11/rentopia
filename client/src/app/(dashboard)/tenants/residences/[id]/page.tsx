@@ -1,6 +1,7 @@
 "use client";
 
 import Loading from "@/components/Loading";
+import PaymentMethods from "@/components/PaymentMethods";
 import {
   Table,
   TableBody,
@@ -19,61 +20,14 @@ import { Lease, Payment, Property } from "@/types/prismaTypes";
 import {
   ArrowDownToLineIcon,
   Check,
-  CreditCard,
   Download,
-  Edit,
   FileText,
-  Mail,
   MapPin,
   User,
 } from "lucide-react";
+import Image from "next/image";
 import { useParams } from "next/navigation";
-import React from "react";
-
-const PaymentMethod = () => {
-  return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden p-6 mt-10 md:mt-0 flex-1">
-      <h2 className="text-2xl font-bold mb-4">Payment method</h2>
-      <p className="mb-4">Change how you pay for your plan.</p>
-      <div className="border rounded-lg p-6">
-        <div>
-          {/* Card Info */}
-          <div className="flex gap-10">
-            <div className="w-36 h-20 bg-blue-600 flex items-center justify-center rounded-md">
-              <span className="text-white text-2xl font-bold">VISA</span>
-            </div>
-            <div className="flex flex-col justify-between">
-              <div>
-                <div className="flex items-start gap-5">
-                  <h3 className="text-lg font-semibold">Visa ending in 2024</h3>
-                  <span className="text-sm font-medium border border-primary-700 text-primary-700 px-3 py-1 rounded-full">
-                    Default
-                  </span>
-                </div>
-                <div className="text-sm text-gray-500 flex items-center">
-                  <CreditCard className="w-4 h-4 mr-1" />
-                  <span>Expiry • 26/06/2024</span>
-                </div>
-              </div>
-              <div className="text-sm text-gray-500 flex items-center">
-                <Mail className="w-4 h-4 mr-1" />
-                <span>billing@baseclub.com</span>
-              </div>
-            </div>
-          </div>
-
-          <hr className="my-4" />
-          <div className="flex justify-end">
-            <button className="bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50">
-              <Edit className="w-5 h-5 mr-2" />
-              <span>Edit</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+import React, { useState } from "react";
 
 const ResidenceCard = ({
   property,
@@ -82,11 +36,27 @@ const ResidenceCard = ({
   property: Property;
   currentLease: Lease;
 }) => {
+  const nextPaymentDate = (() => {
+    const today = new Date();
+    const next = new Date(currentLease.startDate);
+    while (next <= today) next.setMonth(next.getMonth() + 1);
+    return next;
+  })();
+  const [imgSrc, setImgSrc] = useState(
+    property.photoUrls?.[0] || "/placeholder.jpg",
+  );
   return (
     <div className="bg-white rounded-xl shadow-md overflow-hidden p-6 flex-1 flex flex-col justify-between">
       {/* Header */}
       <div className="flex gap-5">
-        <div className="w-64 h-32 object-cover bg-slate-500 rounded-xl"></div>
+        <Image
+          src={imgSrc}
+          alt={property.name}
+          width={256}
+          height={128}
+          className="w-64 h-32 object-cover rounded-xl"
+          onError={() => setImgSrc("/placeholder.jpg")}
+        />
 
         <div className="flex flex-col justify-between">
           <div>
@@ -104,7 +74,7 @@ const ResidenceCard = ({
           </div>
           <div className="text-xl font-bold">
             ${currentLease.rent}{" "}
-            <span className="text-gray-500 text-sm font-normal">/ night</span>
+            <span className="text-gray-500 text-sm font-normal">/ month</span>
           </div>
         </div>
       </div>
@@ -129,7 +99,7 @@ const ResidenceCard = ({
           <div className="xl:flex">
             <div className="text-gray-500 mr-2">Next Payment: </div>
             <div className="font-semibold">
-              {new Date(currentLease.endDate).toLocaleDateString()}
+              {nextPaymentDate.toLocaleDateString()}
             </div>
           </div>
         </div>
@@ -235,10 +205,9 @@ const Residence = () => {
     error: propertyError,
   } = useGetPropertyQuery(Number(id));
 
-  const { data: leases, isLoading: leasesLoading } = useGetLeasesQuery(
-    parseInt(authUser?.cognitoInfo?.userId || "0"),
-    { skip: !authUser?.cognitoInfo?.userId },
-  );
+  const { data: leases, isLoading: leasesLoading } = useGetLeasesQuery(0, {
+    skip: !authUser?.cognitoInfo?.userId,
+  });
   const { data: payments, isLoading: paymentsLoading } = useGetPaymentsQuery(
     leases?.[0]?.id || 0,
     { skip: !authUser?.cognitoInfo?.userId },
@@ -258,7 +227,7 @@ const Residence = () => {
           {currentLease && (
             <ResidenceCard property={property} currentLease={currentLease} />
           )}
-          <PaymentMethod />
+          <PaymentMethods cognitoId={authUser?.cognitoInfo?.userId ?? ""} />
         </div>
         <BillingHistory payments={payments || []} />
       </div>

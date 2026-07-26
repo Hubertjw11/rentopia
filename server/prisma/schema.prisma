@@ -111,6 +111,9 @@ model Tenant {
   email       String
   phoneNumber String
 
+  stripeCustomerId String?         @unique
+  paymentMethods   PaymentMethod[]
+
   properties   Property[]    @relation("TenantProperties")
   favorites    Property[]    @relation("TenantFavorites")
   applications Application[]
@@ -171,4 +174,20 @@ model Payment {
   leaseId       Int
 
   lease Lease @relation(fields: [leaseId], references: [id])
+}
+
+model PaymentMethod {
+  id                    Int      @id @default(autoincrement())
+  tenantCognitoId       String
+  stripePaymentMethodId String   @unique
+  brand                 String
+  last4                 String
+  expMonth              Int
+  expYear               Int
+  isDefault             Boolean  @default(false)
+  createdAt             DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantCognitoId], references: [cognitoId])
+
+  @@index([tenantCognitoId])
 }

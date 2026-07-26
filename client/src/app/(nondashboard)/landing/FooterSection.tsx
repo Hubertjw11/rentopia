@@ -11,6 +11,14 @@ import {
   faYoutube,
 } from "@fortawesome/free-brands-svg-icons";
 
+const SOCIAL_LINKS = {
+  facebook: "https://facebook.com",
+  instagram: "https://instagram.com",
+  twitter: "https://x.com",
+  linkedin: "https://linkedin.com",
+  youtube: "https://youtube.com",
+};
+
 const FooterSection = () => {
   return (
     <footer className="border-t border-gray-200 py-20">
@@ -42,30 +50,48 @@ const FooterSection = () => {
           </nav>
           <div className="flex space-x-4 mb-4">
             <a
-              href="#"
+              href={SOCIAL_LINKS.facebook}
+              target="_blank"
+              rel="noopener noreferrer"
               aria-label="Facebook"
               className="hover:text-primary-600"
             >
               <FontAwesomeIcon icon={faFacebook} className="h-6! w-6!" />
             </a>
             <a
-              href="#"
+              href={SOCIAL_LINKS.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
               aria-label="Instagram"
               className="hover:text-primary-600"
             >
               <FontAwesomeIcon icon={faInstagram} className="h-6! w-6!" />
             </a>
-            <a href="#" aria-label="Twitter" className="hover:text-primary-600">
+            <a
+              href={SOCIAL_LINKS.twitter}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Twitter"
+              className="hover:text-primary-600"
+            >
               <FontAwesomeIcon icon={faTwitter} className="h-6! w-6!" />
             </a>
             <a
-              href="#"
+              href={SOCIAL_LINKS.linkedin}
+              target="_blank"
+              rel="noopener noreferrer"
               aria-label="LinkedIn"
               className="hover:text-primary-600"
             >
               <FontAwesomeIcon icon={faLinkedin} className="h-6! w-6!" />
             </a>
-            <a href="#" aria-label="Youtube" className="hover:text-primary-600">
+            <a
+              href={SOCIAL_LINKS.youtube}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Youtube"
+              className="hover:text-primary-600"
+            >
               <FontAwesomeIcon icon={faYoutube} className="h-6! w-6!" />
             </a>
           </div>

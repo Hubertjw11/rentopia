@@ -68,18 +68,28 @@ const ApplicationCard = ({
             </div>
             <hr className="mt-3" />
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">Start Date:</span>{" "}
-            {new Date(application.lease?.startDate).toLocaleDateString()}
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">End Date:</span>{" "}
-            {new Date(application.lease?.endDate).toLocaleDateString()}
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">Next Payment:</span>{" "}
-            {new Date(application.lease?.nextPaymentDate).toLocaleDateString()}
-          </div>
+          {application.lease ? (
+            <>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Start Date:</span>{" "}
+                {new Date(application.lease.startDate).toLocaleDateString()}
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">End Date:</span>{" "}
+                {new Date(application.lease.endDate).toLocaleDateString()}
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Next Payment:</span>{" "}
+                {new Date(
+                  application.lease.nextPaymentDate,
+                ).toLocaleDateString()}
+              </div>
+            </>
+          ) : (
+            <div className="text-gray-500 text-sm">
+              Lease details will appear after approval.
+            </div>
+          )}
         </div>
 
         {/* Divider - visible only on desktop */}
@@ -118,7 +128,7 @@ const ApplicationCard = ({
         </div>
       </div>
 
-      <hr className="my-4"/>
+      <hr className="my-4" />
       {children}
     </div>
   );

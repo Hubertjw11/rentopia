@@ -28,7 +28,7 @@ const HeroSection = () => {
         dispatch(
           setFilters({
             location: trimmedQuery,
-            coordinates: [lat, lng],
+            coordinates: [lng, lat],
           }),
         );
         const params = new URLSearchParams({
@@ -76,7 +76,7 @@ const HeroSection = () => {
                 className="w-full max-w-lg rounded-none rounded-l-xl border-none bg-white h-12"
               />
               <Button
-                onClick={() => {handleLocationSearch}}
+                onClick={handleLocationSearch}
                 className="bg-secondary-500 text-white rounded-none rounded-r-xl border-none hover:bg-secondary-600 h-12"
               >
                 Search

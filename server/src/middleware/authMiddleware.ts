@@ -48,3 +48,22 @@ export const authMiddleware = (allowedRoles: string[]) => {
     next()
   };
 };
+
+/** Ensures the caller can only touch their OWN :cognitoId resources. */
+export const requireSelf = (paramName = "cognitoId") => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const requested = (req.params as Record<string, string>)[paramName];
+
+    if (!req.user) {
+      res.status(401).json({ message: "Unauthorized!" });
+      return;
+    }
+
+    if (req.user.id !== requested) {
+      res.status(403).json({ message: "Access Denied!" });
+      return;
+    }
+
+    next();
+  };
+};

@@ -7,6 +7,7 @@ import {
   useGetAuthUserQuery,
   useGetPropertiesQuery,
   useGetTenantQuery,
+  useRemoveFavoritePropertyMutation,
 } from "@/state/api";
 import React from "react";
 
@@ -18,6 +19,7 @@ const Favorites = () => {
       skip: !authUser?.cognitoInfo?.userId,
     },
   );
+  const [removeFavorite] = useRemoveFavoritePropertyMutation();
 
   const {
     data: favoriteProperties,
@@ -43,14 +45,19 @@ const Favorites = () => {
             key={property.id}
             property={property}
             isFavorite={true}
-            onFavoriteToggle={() => {}}
-            showFavoriteButton={false}
-            propertyLink={`/tenants/residences/${property.id}`}
+            onFavoriteToggle={() =>
+              removeFavorite({
+                cognitoId: authUser!.cognitoInfo.userId,
+                propertyId: property.id,
+              })
+            }
+            showFavoriteButton={true}
+            propertyLink={`/search/${property.id}`}
           />
         ))}
       </div>
       {(!favoriteProperties || favoriteProperties.length === 0) && (
-        <p>You don&pos;t have any favorited properties</p>
+        <p>You don&apos;t have any favorited properties</p>
       )}
     </div>
   );

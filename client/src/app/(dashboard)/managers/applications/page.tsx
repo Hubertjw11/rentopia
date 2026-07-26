@@ -155,12 +155,15 @@ const Applications = () => {
                         </>
                       )}
                       {application.status === "Denied" && (
-                        <button
+                        <a
+                          href={`mailto:${application.tenant.email}?subject=${encodeURIComponent(
+                            `Regarding your application for ${application.property.name}`,
+                          )}`}
                           className={`bg-gray-800 text-white py-2 px-4 rounded-md flex items-center
                           justify-center hover:bg-secondary-500 hover:text-primary-50`}
                         >
                           Contact User
-                        </button>
+                        </a>
                       )}
                     </div>
                   </div>
