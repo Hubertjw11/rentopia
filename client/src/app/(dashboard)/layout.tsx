@@ -4,7 +4,7 @@ import Navbar from "@/components/Navbar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import Sidebar from "@/components/AppSidebar";
 import { NAVBAR_HEIGHT } from "@/lib/constants";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useGetAuthUserQuery } from "@/state/api";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -12,28 +12,22 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const { data: authUser, isLoading: authLoading } = useGetAuthUserQuery();
   const router = useRouter();
   const pathname = usePathname();
-  const [isLoading, setIsLoading] = useState(true);
+
+  const userRole = authUser?.userRole?.toLowerCase();
+  const isMismatched =
+    (userRole === "manager" && pathname.startsWith("/tenants")) ||
+    (userRole === "tenant" && pathname.startsWith("/managers"));
 
   useEffect(() => {
-    if (authUser) {
-      const userRole = authUser.userRole?.toLowerCase();
-      if (
-        (userRole === "manager" && pathname.startsWith("/tenants")) ||
-        (userRole === "tenant" && pathname.startsWith("/managers"))
-      ) {
-        router.push(
-          userRole === "manager"
-            ? "/managers/properties"
-            : "/tenants/favorites",
-          { scroll: false },
-        );
-      } else {
-        setIsLoading(false);
-      }
+    if (isMismatched) {
+      router.push(
+        userRole === "manager" ? "/managers/properties" : "/tenants/favorites",
+        { scroll: false },
+      );
     }
-  }, [authUser, router, pathname]);
+  }, [isMismatched, userRole, router]);
 
-  if (authLoading || isLoading) return <>Loading...</>;
+  if (authLoading || isMismatched) return <>Loading...</>;
   if (!authUser?.userRole) return null;
 
   return (

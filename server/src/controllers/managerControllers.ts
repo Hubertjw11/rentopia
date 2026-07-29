@@ -1,10 +1,7 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { Prisma } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 import { wktToGeoJSON } from "@terraformer/wkt";
-
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
-const prisma = new PrismaClient({ adapter });
 
 export const getManager = async (
   req: Request<{ cognitoId: string }>,
@@ -90,27 +87,29 @@ export const getManagerProperties = async (
       },
     });
 
-    const propertiesWithFormattedLocation = await Promise.all(
-      properties.map(async (property) => {
-        const coordinates: { coordinates: string }[] =
-          await prisma.$queryRaw`SELECT ST_asText(coordinates) as coordinates from "Location" where id = ${property.location.id}`;
+    const locationIds = properties.map((p) => p.location.id);
+    const rows = locationIds.length
+      ? await prisma.$queryRaw<{ id: number; coordinates: string }[]>`
+          SELECT id, ST_AsText(coordinates) AS coordinates
+          FROM "Location" WHERE id IN (${Prisma.join(locationIds)})`
+      : [];
+    const wktById = new Map(rows.map((r) => [r.id, r.coordinates]));
 
-        const geoJSON: any = wktToGeoJSON(coordinates[0]?.coordinates || "");
-        const longitude = geoJSON.coordinates[0];
-        const latitude = geoJSON.coordinates[1];
-
-        return {
-          ...property,
-          location: {
-            ...property.location,
-            coordinates: {
-              longitude,
-              latitude,
-            },
+    const propertiesWithFormattedLocation = properties.map((property) => {
+      const geoJSON: any = wktToGeoJSON(
+        wktById.get(property.location.id) || "",
+      );
+      return {
+        ...property,
+        location: {
+          ...property.location,
+          coordinates: {
+            longitude: geoJSON?.coordinates?.[0],
+            latitude: geoJSON?.coordinates?.[1],
           },
-        };
-      }),
-    );
+        },
+      };
+    });
 
     res.json(propertiesWithFormattedLocation);
   } catch (err: any) {

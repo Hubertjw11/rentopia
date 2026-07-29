@@ -11,10 +11,12 @@ import {
 } from "@/state/api";
 import { CircleCheckBig, Download, File, Hospital } from "lucide-react";
 import Link from "next/link";
+import { useDownload } from "@/hooks/useDownload";
 import React, { useState } from "react";
 
 const Applications = () => {
   const { data: authUser } = useGetAuthUserQuery();
+  const { download, downloading } = useDownload();
   const [activeTab, setActiveTab] = useState("all");
 
   const {
@@ -39,11 +41,6 @@ const Applications = () => {
   if (isLoading) return <Loading />;
   if (isError || !applications) return <div>Error fetching applications</div>;
 
-  const filteredApplications = applications?.filter((application) => {
-    if (activeTab === "all") return true;
-    return application.status.toLowerCase() === activeTab;
-  });
-
   return (
     <div className="dashboard-container">
       <Header
@@ -63,7 +60,7 @@ const Applications = () => {
         </TabsList>
         {["all", "pending", "approved", "denied"].map((tab) => (
           <TabsContent key={tab} value={tab} className="mt-5 w-full">
-            {filteredApplications
+            {applications
               .filter(
                 (application) =>
                   tab === "all" || application.status.toLowerCase() === tab,
@@ -127,11 +124,25 @@ const Applications = () => {
                       </Link>
                       {application.status === "Approved" && (
                         <button
+                          onClick={() =>
+                            download(
+                              `leases/${application.lease?.id}/agreement`,
+                              `agreement-${application.id}.pdf`,
+                            )
+                          }
+                          disabled={
+                            !application.lease?.id ||
+                            downloading ===
+                              `leases/${application.lease?.id}/agreement`
+                          }
                           className={`bg-white border border-gray-300 text-gray-700 py-2 px-4
-                          rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50`}
+                          rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50 disabled:opacity-50`}
                         >
                           <Download className="w-5 h-5 mr-2" />
-                          Download Agreement
+                          {downloading ===
+                          `leases/${application.lease?.id}/agreement`
+                            ? "Preparing…"
+                            : "Download Agreement"}
                         </button>
                       )}
                       {application.status === "Pending" && (

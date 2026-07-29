@@ -212,7 +212,7 @@ export const api = createApi({
 
     // manager related endpoints
     getManagerProperties: build.query<Property[], string>({
-      query: (cognitoId) => `managers/${cognitoId}/properties `,
+      query: (cognitoId) => `managers/${cognitoId}/properties`,
       providesTags: (result) =>
         result
           ? [
@@ -264,7 +264,7 @@ export const api = createApi({
     }),
 
     // lease related endpoints
-    getLeases: build.query<Lease[], number>({
+    getLeases: build.query<Lease[], void>({
       query: () => "leases",
       providesTags: ["Leases"],
       async onQueryStarted(_, { queryFulfilled }) {
@@ -280,6 +280,16 @@ export const api = createApi({
       async onQueryStarted(_, { queryFulfilled }) {
         await withToast(queryFulfilled, {
           error: "Failed to fetch property leases.",
+        });
+      },
+    }),
+
+    getPropertyPayments: build.query<Payment[], number>({
+      query: (propertyId) => `properties/${propertyId}/payments`,
+      providesTags: ["Payments"],
+      async onQueryStarted(_, { queryFulfilled }) {
+        await withToast(queryFulfilled, {
+          error: "Failed to fetch payment info.",
         });
       },
     }),
@@ -414,6 +424,7 @@ export const {
   useRemoveFavoritePropertyMutation,
   useGetLeasesQuery,
   useGetPropertyLeasesQuery,
+  useGetPropertyPaymentsQuery,
   useGetPaymentsQuery,
   useGetApplicationsQuery,
   useUpdateApplicationStatusMutation,

@@ -1,10 +1,7 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { prisma } from "../lib/prisma";
 import Stripe from "stripe";
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
-const prisma = new PrismaClient({ adapter });
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 /** Every tenant needs exactly one Stripe Customer; create it on first use. */

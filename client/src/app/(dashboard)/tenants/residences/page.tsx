@@ -41,7 +41,11 @@ const Residences = () => {
           <Card
             key={property.id}
             property={property}
-            isFavorite={tenant?.favorites.includes(property.id) || false}
+            isFavorite={
+              tenant?.favorites?.some(
+                (fav: { id: number }) => fav.id === property.id,
+              ) ?? false
+            }
             onFavoriteToggle={() => {}}
             showFavoriteButton={false}
             propertyLink={`/tenants/residences/${property.id}`}

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
+import { JwksClient } from "jwks-rsa";
 
 interface DecodedToken extends JwtPayload {
   sub: string;
@@ -17,8 +18,38 @@ declare global {
   }
 }
 
+const issuer = `https://cognito-idp.${process.env.AWS_REGION}.amazonaws.com/${process.env.COGNITO_USER_POOL_ID}`;
+const jwks = new JwksClient({
+  jwksUri: `${issuer}/.well-known/jwks.json`,
+  cache: true,
+});
+
+const getKey: jwt.GetPublicKeyOrSecret = (header, callback) => {
+  jwks.getSigningKey(header.kid, (err, key) => {
+    if (err) callback(err);
+    else callback(null, key!.getPublicKey());
+  });
+};
+
+const verifyToken = (token: string): Promise<DecodedToken> =>
+  new Promise((resolve, reject) => {
+    jwt.verify(
+      token,
+      getKey,
+      { issuer, algorithms: ["RS256"] },
+      (err, decoded) => {
+        if (err) reject(err);
+        else resolve(decoded as DecodedToken);
+      },
+    );
+  });
+
 export const authMiddleware = (allowedRoles: string[]) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     const token = req.headers.authorization?.split(" ")[1];
 
     if (!token) {
@@ -27,7 +58,7 @@ export const authMiddleware = (allowedRoles: string[]) => {
     }
 
     try {
-      const decoded = jwt.decode(token) as DecodedToken;
+      const decoded = await verifyToken(token);
       const userRole = decoded["custom:role"] || "";
       req.user = {
         id: decoded.sub,
@@ -40,14 +71,15 @@ export const authMiddleware = (allowedRoles: string[]) => {
         return;
       }
     } catch (err) {
-      console.error("Failed to decode token:", err);
-      res.status(400).json({ message: "Invalid token" });
+      console.error("Failed to verify token:", err);
+      res.status(401).json({ message: "Invalid token" });
       return;
     }
 
-    next()
+    next();
   };
 };
+
 
 /** Ensures the caller can only touch their OWN :cognitoId resources. */
 export const requireSelf = (paramName = "cognitoId") => {

@@ -20,7 +20,7 @@ import { useAppSelector } from "@/state/redux";
 import { debounce } from "lodash";
 import { Search } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 
 const FiltersFull = () => {
@@ -29,13 +29,15 @@ const FiltersFull = () => {
   const pathname = usePathname();
   const filters = useAppSelector((state) => state.global.filters);
   const [localFilters, setLocalFilters] = useState(filters);
+  const [lastFilters, setLastFilters] = useState(filters);
   const isFiltersFullOpen = useAppSelector(
     (state) => state.global.isFiltersFullOpen,
   );
 
-  useEffect(() => {
+  if (filters !== lastFilters) {
+    setLastFilters(filters);
     setLocalFilters(filters);
-  }, [filters]);
+  }
 
   const updateURL = debounce((newFilters: FiltersState) => {
     const cleanFilters = cleanParams(newFilters);

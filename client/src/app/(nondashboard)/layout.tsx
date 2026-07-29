@@ -4,31 +4,25 @@ import Navbar from "@/components/Navbar";
 import { NAVBAR_HEIGHT } from "@/lib/constants";
 import { useGetAuthUserQuery } from "@/state/api";
 import { usePathname, useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const { data: authUser, isLoading: authLoading } = useGetAuthUserQuery();
   const router = useRouter();
   const pathname = usePathname();
-  const [isLoading, setIsLoading] = useState(true);
+
+  const userRole = authUser?.userRole?.toLowerCase();
+  const shouldRedirect =
+    userRole === "manager" &&
+    (pathname.startsWith("/search") || pathname === "/");
 
   useEffect(() => {
-    if (authUser) {
-      const userRole = authUser.userRole?.toLowerCase();
-      if (
-        (userRole === "manager" && pathname.startsWith("/search")) ||
-        (userRole === "manager" && pathname === "/")
-      ) {
-        router.push("/managers/properties", { scroll: false });
-      } else {
-        setIsLoading(false);
-      }
-    } else {
-      setIsLoading(false);
+    if (shouldRedirect) {
+      router.push("/managers/properties", { scroll: false });
     }
-  }, [authUser, router, pathname]);
+  }, [shouldRedirect, router]);
 
-  if (authLoading || isLoading) return <>Loading...</>;
+  if (authLoading || shouldRedirect) return <>Loading...</>;
 
   return (
     <div className="h-full w-full">

@@ -82,7 +82,9 @@ export const getProperties = async (
 
     if (amenities && amenities !== "any") {
       const amenitiesArray = (amenities as string).split(",");
-      whereConditions.push(Prisma.sql`p.amenities @> ${amenitiesArray}`);
+      whereConditions.push(
+        Prisma.sql`p.amenities @> ${amenitiesArray}::"Amenity"[]`,
+      );
     }
 
     if (availableFrom && availableFrom !== "any") {
@@ -92,10 +94,10 @@ export const getProperties = async (
         const date = new Date(availableFromDate);
         if (!isNaN(date.getTime())) {
           whereConditions.push(
-            Prisma.sql`EXISTS (
-              SELECT 1 FROM "Lease" l 
-              WHERE l."propertyId" = p.id 
-              AND l."startDate" <= ${date.toISOString()}
+            Prisma.sql`NOT EXISTS (
+              SELECT 1 FROM "Lease" lease
+              WHERE lease."propertyId" = p.id
+              AND lease."endDate" > ${date.toISOString()}::timestamp
             )`,
           );
         }
@@ -165,7 +167,12 @@ export const getProperty = async (
       },
     });
 
-    if (property) {
+    if (!property) {
+      res.status(404).json({ message: "Property not found" });
+      return;
+    }
+
+    {
       const coordinates: { coordinates: string }[] =
         await prisma.$queryRaw`SELECT ST_asText(coordinates) as coordinates from "Location" where id = ${property.location.id}`;
 
@@ -204,9 +211,10 @@ export const createProperty = async (
       state,
       country,
       postalCode,
-      managerCognitoId,
+      managerCognitoId: _ignored,
       ...propertyData
     } = req.body;
+    const managerCognitoId = req.user!.id;
 
     const photoUrls = await Promise.all(
       files.map(async (file) => {
@@ -277,7 +285,7 @@ export const createProperty = async (
         securityDeposit: parseFloat(propertyData.securityDeposit),
         applicationFee: parseFloat(propertyData.applicationFee),
         beds: parseInt(propertyData.beds),
-        baths: parseInt(propertyData.baths),
+        baths: parseFloat(propertyData.baths),
         squareFeet: parseInt(propertyData.squareFeet),
       },
       include: {

@@ -43,7 +43,7 @@ const ImagePreviews = ({ images }: ImagePreviewsProps) => {
       <button
         onClick={handleNext}
         className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-primary-700/50 p-2 rounded-full focus:outline-none focus:ring focus:ring-secondary-300"
-        aria-label="Previous Image"
+        aria-label="Next Image"
       >
         <ChevronRight className="text-white" />
       </button>

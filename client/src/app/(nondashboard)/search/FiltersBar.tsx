@@ -6,7 +6,7 @@ import {
 } from "@/state";
 import { useAppSelector } from "@/state/redux";
 import { usePathname, useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { debounce } from "lodash";
 import { cleanParams, cn, formatPriceValue } from "@/lib/utils";
@@ -32,10 +32,13 @@ const FiltersBar = () => {
   );
   const viewMode = useAppSelector((state) => state.global.viewMode);
   const [searchInput, setSearchInput] = useState(filters.location);
+  const [lastLocation, setLastLocation] = useState(filters.location);
 
-  useEffect(() => {
+  // Render-phase reset — React's documented alternative to syncing in an effect.
+  if (filters.location !== lastLocation) {
+    setLastLocation(filters.location);
     setSearchInput(filters.location);
-  }, [filters.location]);
+  }
 
   const updateURL = debounce((newFilters: FiltersState) => {
     const cleanFilters = cleanParams(newFilters);

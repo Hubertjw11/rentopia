@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useParams } from "next/navigation";
+import { useDownload } from "@/hooks/useDownload";
 import React, { useState } from "react";
 
 const ResidenceCard = ({
@@ -45,6 +46,8 @@ const ResidenceCard = ({
   const [imgSrc, setImgSrc] = useState(
     property.photoUrls?.[0] || "/placeholder.jpg",
   );
+  const { download, downloading } = useDownload();
+  const agreementPath = `leases/${currentLease.id}/agreement`;
   return (
     <div className="bg-white rounded-xl shadow-md overflow-hidden p-6 flex-1 flex flex-col justify-between">
       {/* Header */}
@@ -111,9 +114,15 @@ const ResidenceCard = ({
           <User className="w-5 h-5 mr-2" />
           Manager
         </button>
-        <button className="bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50">
+        <button
+          onClick={() =>
+            download(agreementPath, `agreement-${currentLease.id}.pdf`)
+          }
+          disabled={downloading === agreementPath}
+          className="bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50 disabled:opacity-50"
+        >
           <Download className="w-5 h-5 mr-2" />
-          Download Agreement
+          {downloading === agreementPath ? "Preparing…" : "Download Agreement"}
         </button>
       </div>
     </div>
@@ -205,20 +214,22 @@ const Residence = () => {
     error: propertyError,
   } = useGetPropertyQuery(Number(id));
 
-  const { data: leases, isLoading: leasesLoading } = useGetLeasesQuery(0, {
-    skip: !authUser?.cognitoInfo?.userId,
-  });
-  const { data: payments, isLoading: paymentsLoading } = useGetPaymentsQuery(
-    leases?.[0]?.id || 0,
+  const { data: leases, isLoading: leasesLoading } = useGetLeasesQuery(
+    undefined,
     { skip: !authUser?.cognitoInfo?.userId },
+  );
+
+  const currentLease = leases?.find(
+    (lease: Lease) => lease.propertyId === Number(id),
+  );
+
+  const { data: payments, isLoading: paymentsLoading } = useGetPaymentsQuery(
+    currentLease?.id ?? 0,
+    { skip: !currentLease },
   );
 
   if (propertyLoading || leasesLoading || paymentsLoading) return <Loading />;
   if (!property || propertyError) return <div>Error loading property</div>;
-
-  const currentLease = leases?.find(
-    (lease) => lease.propertyId === property.id,
-  );
 
   return (
     <div className="dashboard-container">

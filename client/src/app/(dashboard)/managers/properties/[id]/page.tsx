@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  useGetPaymentsQuery,
+  useGetPropertyPaymentsQuery,
   useGetPropertyLeasesQuery,
   useGetPropertyQuery,
 } from "@/state/api";
@@ -19,6 +19,7 @@ import { ArrowDownToLine, ArrowLeft, Check, Download } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useDownload } from "@/hooks/useDownload";
 import React from "react";
 
 const PropertyTenants = () => {
@@ -30,7 +31,8 @@ const PropertyTenants = () => {
   const { data: leases, isLoading: leasesLoading } =
     useGetPropertyLeasesQuery(propertyId);
   const { data: payments, isLoading: paymentsLoading } =
-    useGetPaymentsQuery(propertyId);
+    useGetPropertyPaymentsQuery(propertyId);
+  const { download, downloading } = useDownload();
 
   if (propertyLoading || leasesLoading || paymentsLoading) return <Loading />;
 
@@ -72,11 +74,25 @@ const PropertyTenants = () => {
             </div>
             <div>
               <button
+                onClick={() =>
+                  download(
+                    `properties/${propertyId}/agreements`,
+                    "agreements.zip",
+                  )
+                }
+                disabled={
+                  downloading === `properties/${propertyId}/agreements` ||
+                  !leases?.length
+                }
                 className={`bg-white border border-gray-300 text-gray-700 py-2
-              px-4 rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50`}
+              px-4 rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50 disabled:opacity-50`}
               >
                 <Download className="w-5 h-5 mr-2" />
-                <span>Download All</span>
+                <span>
+                  {downloading === `properties/${propertyId}/agreements`
+                    ? "Preparing…"
+                    : "Download All"}
+                </span>
               </button>
             </div>
           </div>
@@ -139,11 +155,22 @@ const PropertyTenants = () => {
                     <TableCell>{lease.tenant.phoneNumber}</TableCell>
                     <TableCell>
                       <button
+                        onClick={() =>
+                          download(
+                            `leases/${lease.id}/agreement`,
+                            `agreement-${lease.id}.pdf`,
+                          )
+                        }
+                        disabled={
+                          downloading === `leases/${lease.id}/agreement`
+                        }
                         className={`border border-gray-300 text-gray-700 py-2 px-4 rounded-md flex 
-                      items-center justify-center font-semibold hover:bg-primary-700 hover:text-primary-50`}
+                      items-center justify-center font-semibold hover:bg-primary-700 hover:text-primary-50 disabled:opacity-50`}
                       >
                         <ArrowDownToLine className="w-4 h-4 mr-1" />
-                        Download Agreement
+                        {downloading === `leases/${lease.id}/agreement`
+                          ? "Preparing…"
+                          : "Download Agreement"}
                       </button>
                     </TableCell>
                   </TableRow>
