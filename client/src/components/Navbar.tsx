@@ -8,8 +8,9 @@ import { Button } from "./ui/button";
 import { useGetAuthUserQuery } from "@/state/api";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "aws-amplify/auth";
-import { MessageCircle, Plus, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import NotificationBell from "./NotificationBell";
+import MessageDropdown from "./MessageDropdown";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -102,10 +103,7 @@ const Navbar = () => {
         <div className="flex items-center gap-5">
           {authUser ? (
             <>
-              <div className="relative hidden md:block">
-                <MessageCircle className="w-6 h-6 cursor-pointer text-primary-200 hover:text-primary-400" />
-                <span className="absolute top-0 right-0 w-2 h-2 bg-secondary-700 rounded-full"></span>
-              </div>
+              <MessageDropdown />
               <NotificationBell />
 
               <DropdownMenu>

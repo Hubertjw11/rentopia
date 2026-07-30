@@ -35,7 +35,7 @@ const PropertyOverview = ({ propertyId }: PropertyOverviewProps) => {
             <span className="flex items-center text-yellow-500">
               <Star className="w-4 h-4 mr-1 fill-current" />
               {(property.averageRating ?? 0).toFixed(1)} (
-              {property.numberOfReviews ?? 0}{" "}
+              {property.numberOfReviews ?? 0})
             </span>
             <span className="text-green-600">Verified Listing</span>
           </div>

@@ -12,11 +12,17 @@ import propertyRoutes from "./routes/propertyRoutes";
 import leaseRoutes from "./routes/leaseRoutes";
 import applicationRoutes from "./routes/applicationRoutes";
 import notificationRoutes from "./routes/notificationRoutes";
+import conversationRoutes from "./routes/conversationRoutes";
+import { errorHandler } from "./middleware/errorHandler";
 
 // CONFIGURATIONS
 dotenv.config();
 const app = express();
 app.use(express.json());
+app.use((req, _res, next) => {
+  if (req.body === undefined) req.body = {};
+  next();
+});
 app.use(helmet());
 app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
 app.use(morgan("common"));
@@ -35,10 +41,12 @@ app.get("/", (req, res) => {
 
 app.use("/applications", applicationRoutes);
 app.use("/notifications", notificationRoutes);
+app.use("/conversations", conversationRoutes);
 app.use("/properties", propertyRoutes);
 app.use("/leases", leaseRoutes);
 app.use("/tenants", authMiddleware(["tenant"]), tenantRoutes);
 app.use("/managers", authMiddleware(["manager"]), managerRoutes);
+app.use(errorHandler);
 
 // SERVER
 const port = Number(process.env.PORT) || 3002;

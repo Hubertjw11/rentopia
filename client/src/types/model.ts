@@ -116,7 +116,8 @@ export type PaymentMethod = {
 export type NotificationType =
   | "ApplicationSubmitted"
   | "ApplicationApproved"
-  | "ApplicationDenied";
+  | "ApplicationDenied"
+  | "NewMessage";
 
 export type AppNotification = {
   id: number;
@@ -128,3 +129,31 @@ export type AppNotification = {
   isRead: boolean;
   createdAt: string;
 };
+
+export type Message = {
+  id: number;
+  conversationId: number;
+  senderCognitoId: string;
+  body: string;
+  readAt: string | null;
+  createdAt: string;
+};
+
+export type Conversation = {
+  id: number;
+  propertyId: number;
+  tenantCognitoId: string;
+  managerCognitoId: string;
+  lastMessageAt: string;
+  createdAt: string;
+  property: { id: number; name: string; photoUrls: string[] };
+  tenant: { cognitoId: string; name: string };
+  manager: { cognitoId: string; name: string };
+  lastMessage: Message | null;
+  unreadCount: number;
+};
+
+export type ConversationRow = Omit<
+  Conversation,
+  "property" | "tenant" | "manager" | "lastMessage" | "unreadCount"
+>;

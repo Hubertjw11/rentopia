@@ -10,6 +10,9 @@ import {
   AppNotification,
   LeaseWithTenant,
   ApplicationRow,
+  Conversation,
+  ConversationRow,
+  Message,
 } from "@/types/model";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { fetchAuthSession, getCurrentUser } from "aws-amplify/auth";
@@ -38,6 +41,8 @@ export const api = createApi({
     "Applications",
     "PaymentMethods",
     "Notifications",
+    "Conversations",
+    "Messages",
   ],
   endpoints: (build) => ({
     getAuthUser: build.query<User, void>({
@@ -438,6 +443,55 @@ export const api = createApi({
       }),
       invalidatesTags: ["Notifications"],
     }),
+
+    // messaging related endpoints
+    getConversations: build.query<Conversation[], void>({
+      query: () => "conversations",
+      providesTags: ["Conversations"],
+    }),
+
+    getUnreadMessageCount: build.query<{ count: number }, void>({
+      query: () => "conversations/unread-count",
+      providesTags: ["Conversations"],
+    }),
+
+    getMessages: build.query<Message[], number>({
+      query: (conversationId) => `conversations/${conversationId}/messages`,
+      providesTags: ["Messages"],
+      // Reading a thread marks it read server-side, so unread counts change.
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        await queryFulfilled;
+        dispatch(api.util.invalidateTags(["Conversations"]));
+      },
+    }),
+
+    startConversation: build.mutation<
+      ConversationRow,
+      { propertyId: number; tenantCognitoId?: string }
+    >({
+      query: (body) => ({ url: "conversations", method: "POST", body }),
+      invalidatesTags: ["Conversations"],
+      async onQueryStarted(_, { queryFulfilled }) {
+        await withToast(queryFulfilled, {
+          error: "Could not open the conversation.",
+        });
+      },
+    }),
+
+    sendMessage: build.mutation<
+      Message,
+      { conversationId: number; body: string }
+    >({
+      query: ({ conversationId, body }) => ({
+        url: `conversations/${conversationId}/messages`,
+        method: "POST",
+        body: { body },
+      }),
+      invalidatesTags: ["Messages", "Conversations"],
+      async onQueryStarted(_, { queryFulfilled }) {
+        await withToast(queryFulfilled, { error: "Message failed to send." });
+      },
+    }),
   }),
 });
 
@@ -469,4 +523,9 @@ export const {
   useGetUnreadNotificationCountQuery,
   useMarkNotificationReadMutation,
   useMarkAllNotificationsReadMutation,
+  useGetConversationsQuery,
+  useGetUnreadMessageCountQuery,
+  useGetMessagesQuery,
+  useStartConversationMutation,
+  useSendMessageMutation,
 } = api;

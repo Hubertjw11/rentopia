@@ -15,6 +15,7 @@ import {
   Heart,
   Home,
   Menu,
+  MessageSquare,
   Settings,
   X,
 } from "lucide-react";
@@ -39,6 +40,11 @@ const AppSidebar = ({ userType }: AppSidebarProps) => {
             href: "/managers/applications",
           },
           {
+            icon: MessageSquare,
+            label: "Messages",
+            href: "/managers/messages",
+          },
+          {
             icon: Settings,
             label: "Settings",
             href: "/managers/settings",
@@ -52,6 +58,7 @@ const AppSidebar = ({ userType }: AppSidebarProps) => {
             href: "/tenants/applications",
           },
           { icon: Home, label: "Residences", href: "/tenants/residences" },
+          { icon: MessageSquare, label: "Messages", href: "/tenants/messages" },
           { icon: Settings, label: "Settings", href: "/tenants/settings" },
         ];
 

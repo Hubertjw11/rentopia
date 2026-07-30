@@ -1,6 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { useGetAuthUserQuery, useGetPropertyQuery } from "@/state/api";
-import { Mail, Phone } from "lucide-react";
+import {
+  useGetAuthUserQuery,
+  useGetConversationsQuery,
+  useGetPropertyQuery,
+  useStartConversationMutation,
+} from "@/state/api";
+import { Conversation } from "@/types/model";
+import { Mail, MessageSquare, Phone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
 
@@ -11,11 +17,34 @@ const ContactWidget = ({ onOpenModal, propertyId }: ContactWidgetProps) => {
 
   const manager = property?.manager;
 
+  const [startConversation, { isLoading: starting }] =
+    useStartConversationMutation();
+  const isTenant = authUser?.userRole?.toLowerCase() === "tenant";
+  const { data: conversations } = useGetConversationsQuery(undefined, {
+    skip: !isTenant,
+  });
+  const existing = conversations?.find(
+    (c: Conversation) => c.propertyId === propertyId,
+  );
+
   const handleButtonClick = () => {
     if (authUser) {
       onOpenModal();
     } else {
       router.push("/signin");
+    }
+  };
+
+  const handleMessage = async () => {
+    if (!authUser) {
+      router.push("/signin");
+      return;
+    }
+    try {
+      const conversation = await startConversation({ propertyId }).unwrap();
+      router.push(`/tenants/messages?c=${conversation.id}`, { scroll: false });
+    } catch {
+      // withToast on the mutation already surfaced the error.
     }
   };
 
@@ -59,6 +88,22 @@ const ContactWidget = ({ onOpenModal, propertyId }: ContactWidgetProps) => {
       >
         {authUser ? "Submit Application" : "Sign In to Apply"}
       </Button>
+
+      {isTenant && (
+        <Button
+          variant="outline"
+          disabled={starting}
+          onClick={handleMessage}
+          className="w-full mt-2 border-primary-400 hover:bg-primary-700 hover:text-primary-50"
+        >
+          <MessageSquare className="w-4 h-4 mr-2" />
+          {starting
+            ? "Opening…"
+            : existing
+              ? "Continue conversation"
+              : "Message manager"}
+        </Button>
+      )}
 
       <hr className="my-4" />
       <div className="text-sm">

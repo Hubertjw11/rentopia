@@ -79,9 +79,9 @@ const NotificationBell = () => {
 
       <DropdownMenuContent
         align="end"
-        className="w-80 bg-white text-primary-700"
+        className="w-80 p-0 bg-white text-primary-700"
       >
-        <div className="flex items-center justify-between px-2 py-1.5">
+        <div className="flex items-center justify-between px-3 py-2">
           <span className="text-sm font-semibold">Notifications</span>
           {count > 0 && (
             <button
@@ -93,41 +93,52 @@ const NotificationBell = () => {
             </button>
           )}
         </div>
-        <DropdownMenuSeparator className="bg-primary-200" />
+        <DropdownMenuSeparator className="bg-primary-200 m-0" />
 
-        {isLoading ? (
-          <div className="px-2 py-6 text-center text-sm text-gray-500">
-            Loading…
-          </div>
-        ) : !notifications?.length ? (
-          <div className="px-2 py-6 text-center text-sm text-gray-500">
-            No notifications yet
-          </div>
-        ) : (
-          notifications.map((n: AppNotification) => (
-            <DropdownMenuItem
-              key={n.id}
-              onClick={() => handleSelect(n.id, n.isRead, n.link)}
-              className={`flex flex-col items-start gap-0.5 px-2 py-2 cursor-pointer whitespace-normal ${
-                n.isRead ? "" : "bg-primary-100"
-              }`}
-            >
-              <div className="flex w-full items-start gap-2">
-                {!n.isRead && (
-                  <span className="mt-1.5 w-1.5 h-1.5 shrink-0 rounded-full bg-secondary-700" />
-                )}
-                <span
-                  className={`text-sm ${n.isRead ? "font-medium" : "font-semibold"}`}
-                >
-                  {n.title}
+        <div className="max-h-80 overflow-y-auto p-1">
+          {isLoading ? (
+            <div className="px-2 py-6 text-center text-sm text-gray-500">
+              Loading…
+            </div>
+          ) : !notifications?.length ? (
+            <div className="px-2 py-6 text-center text-sm text-gray-500">
+              No notifications yet
+            </div>
+          ) : (
+            notifications.map((n: AppNotification) => (
+              <DropdownMenuItem
+                key={n.id}
+                onClick={() => handleSelect(n.id, n.isRead, n.link)}
+                className={`flex flex-col items-start gap-0.5 px-2 py-2 cursor-pointer whitespace-normal ${
+                  n.isRead ? "" : "bg-primary-100"
+                }`}
+              >
+                <div className="flex w-full items-start gap-2">
+                  {!n.isRead && (
+                    <span className="mt-1.5 w-1.5 h-1.5 shrink-0 rounded-full bg-secondary-700" />
+                  )}
+                  <span
+                    className={`text-sm ${n.isRead ? "font-medium" : "font-semibold"}`}
+                  >
+                    {n.title}
+                  </span>
+                </div>
+                <span className="text-xs text-gray-600 pl-3.5">{n.body}</span>
+                <span className="text-[10px] text-gray-400 pl-3.5">
+                  {timeAgo(n.createdAt)}
                 </span>
-              </div>
-              <span className="text-xs text-gray-600 pl-3.5">{n.body}</span>
-              <span className="text-[10px] text-gray-400 pl-3.5">
-                {timeAgo(n.createdAt)}
-              </span>
-            </DropdownMenuItem>
-          ))
+              </DropdownMenuItem>
+            ))
+          )}
+        </div>
+
+        {notifications && notifications.length >= 20 && (
+          <>
+            <DropdownMenuSeparator className="bg-primary-200 m-0" />
+            <div className="px-3 py-2 text-center text-xs text-gray-500">
+              Showing the 20 most recent
+            </div>
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
