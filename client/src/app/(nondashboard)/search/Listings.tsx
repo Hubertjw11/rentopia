@@ -8,7 +8,7 @@ import {
   useRemoveFavoritePropertyMutation,
 } from "@/state/api";
 import { useAppSelector } from "@/state/redux";
-import { Property } from "@/types/prismaTypes";
+import { Property } from "@/types/model";
 import React from "react";
 
 const Listings = () => {

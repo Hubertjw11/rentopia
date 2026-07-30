@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Notification as AppNotification } from "@/types/prismaTypes";
+import { AppNotification } from "@/types/model";
 import {
   useGetNotificationsQuery,
   useGetUnreadNotificationCountQuery,
@@ -35,7 +35,11 @@ const NotificationBell = () => {
   const { data: unread } = useGetUnreadNotificationCountQuery(undefined, {
     pollingInterval: 60000,
   });
-  const { data: notifications, isLoading, refetch } = useGetNotificationsQuery();
+  const {
+    data: notifications,
+    isLoading,
+    refetch,
+  } = useGetNotificationsQuery();
   const [markRead] = useMarkNotificationReadMutation();
   const [markAllRead] = useMarkAllNotificationsReadMutation();
 
@@ -61,7 +65,9 @@ const NotificationBell = () => {
     >
       <DropdownMenuTrigger
         className="relative hidden md:block focus:outline-none"
-        aria-label={count > 0 ? `Notifications, ${count} unread` : "Notifications"}
+        aria-label={
+          count > 0 ? `Notifications, ${count} unread` : "Notifications"
+        }
       >
         <Bell className="w-6 h-6 cursor-pointer text-primary-200 hover:text-primary-400" />
         {count > 0 && (

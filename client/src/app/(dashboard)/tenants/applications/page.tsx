@@ -35,55 +35,55 @@ const Applications = () => {
         subtitle="Track and manage your property rental applications"
       />
       <div className="w-full">
-        {applications?.map((application) => (
-          <ApplicationCard
-            key={application.id}
-            application={application}
-            userType="renter"
-          >
-            <div className="flex justify-between gap-5 w-full pb-4 px-4">
-              {application.status === "Approved" ? (
-                <div className="bg-green-100 p-4 text-green-700 grow flex items-center">
-                  <CircleCheckBig className="w-5 h-5 mr-2" />
-                  The property is being rented by you until{" "}
-                  {application.lease
-                    ? new Date(application.lease.endDate).toLocaleDateString()
-                    : "—"}
-                </div>
-              ) : application.status === "Pending" ? (
-                <div className="bg-yellow-100 p-4 text-yellow-700 grow flex items-center">
-                  <Clock className="w-5 h-5 mr-2" />
-                  Your application is pending approval
-                </div>
-              ) : (
-                <div className="bg-red-100 p-4 text-red-700 grow flex items-center">
-                  <XCircle className="w-5 h-5 mr-2" />
-                  Your application has been denied
-                </div>
-              )}
-              {application.status === "Approved" && application.lease?.id && (
-                <button
-                  onClick={() =>
-                    download(
-                      `leases/${application.lease.id}/agreement`,
-                      `agreement-${application.id}.pdf`,
-                    )
-                  }
-                  disabled={
-                    downloading === `leases/${application.lease.id}/agreement`
-                  }
-                  className={`bg-white border border-gray-300 text-gray-700 py-2 px-4
+        {applications?.map((application) => {
+          const agreementPath = application.lease
+            ? `leases/${application.lease.id}/agreement`
+            : null;
+          return (
+            <ApplicationCard
+              key={application.id}
+              application={application}
+              userType="renter"
+            >
+              <div className="flex justify-between gap-5 w-full pb-4 px-4">
+                {application.status === "Approved" ? (
+                  <div className="bg-green-100 p-4 text-green-700 grow flex items-center">
+                    <CircleCheckBig className="w-5 h-5 mr-2" />
+                    The property is being rented by you until{" "}
+                    {application.lease
+                      ? new Date(application.lease.endDate).toLocaleDateString()
+                      : "—"}
+                  </div>
+                ) : application.status === "Pending" ? (
+                  <div className="bg-yellow-100 p-4 text-yellow-700 grow flex items-center">
+                    <Clock className="w-5 h-5 mr-2" />
+                    Your application is pending approval
+                  </div>
+                ) : (
+                  <div className="bg-red-100 p-4 text-red-700 grow flex items-center">
+                    <XCircle className="w-5 h-5 mr-2" />
+                    Your application has been denied
+                  </div>
+                )}
+                {application.status === "Approved" && agreementPath && (
+                  <button
+                    onClick={() =>
+                      download(agreementPath, `agreement-${application.id}.pdf`)
+                    }
+                    disabled={downloading === agreementPath}
+                    className={`bg-white border border-gray-300 text-gray-700 py-2 px-4
                           rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50 disabled:opacity-50`}
-                >
-                  <Download className="w-5 h-5 mr-2" />
-                  {downloading === `leases/${application.lease.id}/agreement`
-                    ? "Preparing…"
-                    : "Download Agreement"}
-                </button>
-              )}
-            </div>
-          </ApplicationCard>
-        ))}
+                  >
+                    <Download className="w-5 h-5 mr-2" />
+                    {downloading === agreementPath
+                      ? "Preparing…"
+                      : "Download Agreement"}
+                  </button>
+                )}
+              </div>
+            </ApplicationCard>
+          );
+        })}
       </div>
     </div>
   );

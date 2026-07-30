@@ -7,8 +7,10 @@ import {
   Tenant,
   Lease,
   Application,
-  Notification as AppNotification,
-} from "@/types/prismaTypes";
+  AppNotification,
+  LeaseWithTenant,
+  ApplicationRow,
+} from "@/types/model";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { fetchAuthSession, getCurrentUser } from "aws-amplify/auth";
 import { FiltersState } from ".";
@@ -276,7 +278,7 @@ export const api = createApi({
       },
     }),
 
-    getPropertyLeases: build.query<Lease[], number>({
+    getPropertyLeases: build.query<LeaseWithTenant[], number>({
       query: (propertyId) => `properties/${propertyId}/leases`,
       providesTags: ["Leases"],
       async onQueryStarted(_, { queryFulfilled }) {
@@ -331,7 +333,7 @@ export const api = createApi({
     }),
 
     updateApplicationStatus: build.mutation<
-      Application & { lease?: Lease },
+      ApplicationRow,
       { id: number; status: string }
     >({
       query: ({ id, status }) => ({
@@ -348,7 +350,7 @@ export const api = createApi({
       },
     }),
 
-    createApplication: build.mutation<Application, Partial<Application>>({
+    createApplication: build.mutation<ApplicationRow, Partial<Application>>({
       query: (body) => ({
         url: `applications`,
         method: "POST",

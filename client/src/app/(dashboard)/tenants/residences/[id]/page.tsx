@@ -16,7 +16,7 @@ import {
   useGetPaymentsQuery,
   useGetPropertyQuery,
 } from "@/state/api";
-import { Lease, Payment, Property } from "@/types/prismaTypes";
+import { Lease, Payment, Property } from "@/types/model";
 import {
   ArrowDownToLineIcon,
   Check,

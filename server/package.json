@@ -8,8 +8,7 @@
     "start": "npm run build && node dist/src/index.js",
     "dev": "concurrently \"npx tsc -w --noEmit\" \"npx tsx watch src/index.ts\"",
     "seed": "tsx prisma/seed.ts",
-    "prisma:generate": "prisma generate",
-    "postprisma:generate": "shx cp -r node_modules/.prisma/client/index.d.ts ../client/src/types/prismaTypes.d.ts"
+    "prisma:generate": "prisma generate"
   },
   "keywords": [],
   "author": "",

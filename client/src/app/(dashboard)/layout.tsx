@@ -36,7 +36,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
         <Navbar />
         <div style={{ paddingTop: `${NAVBAR_HEIGHT}px` }}>
           <main className="flex">
-            <Sidebar userType={authUser?.userRole.toLowerCase()} />
+            <Sidebar userType={userRole === "manager" ? "manager" : "tenant"} />{" "}
             <div className="grow transition-all duration-300">{children}</div>
           </main>
         </div>
