@@ -7,6 +7,7 @@ import {
   Tenant,
   Lease,
   Application,
+  Notification as AppNotification,
 } from "@/types/prismaTypes";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { fetchAuthSession, getCurrentUser } from "aws-amplify/auth";
@@ -34,6 +35,7 @@ export const api = createApi({
     "Payments",
     "Applications",
     "PaymentMethods",
+    "Notifications",
   ],
   endpoints: (build) => ({
     getAuthUser: build.query<User, void>({
@@ -407,6 +409,33 @@ export const api = createApi({
       }),
       invalidatesTags: ["PaymentMethods"],
     }),
+
+    // notification related endpoints
+    getNotifications: build.query<AppNotification[], void>({
+      query: () => "notifications",
+      providesTags: ["Notifications"],
+    }),
+
+    getUnreadNotificationCount: build.query<{ count: number }, void>({
+      query: () => "notifications/unread-count",
+      providesTags: ["Notifications"],
+    }),
+
+    markNotificationRead: build.mutation<{ message: string }, number>({
+      query: (id) => ({
+        url: `notifications/${id}/read`,
+        method: "PUT",
+      }),
+      invalidatesTags: ["Notifications"],
+    }),
+
+    markAllNotificationsRead: build.mutation<{ message: string }, void>({
+      query: () => ({
+        url: "notifications/read-all",
+        method: "PUT",
+      }),
+      invalidatesTags: ["Notifications"],
+    }),
   }),
 });
 
@@ -434,4 +463,8 @@ export const {
   useSavePaymentMethodMutation,
   useSetDefaultPaymentMethodMutation,
   useDeletePaymentMethodMutation,
+  useGetNotificationsQuery,
+  useGetUnreadNotificationCountQuery,
+  useMarkNotificationReadMutation,
+  useMarkAllNotificationsReadMutation,
 } = api;

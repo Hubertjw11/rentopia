@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
+import { createNotification } from "../lib/notify";
 
 export const listApplications = async (
   req: Request<{ cognitoId: string }>,
@@ -69,7 +70,7 @@ export const createApplication = async (
 
     const property = await prisma.property.findUnique({
       where: { id: propertyId },
-      select: { id: true },
+      select: { id: true, name: true, managerCognitoId: true },
     });
 
     if (!property) {
@@ -78,25 +79,37 @@ export const createApplication = async (
     }
 
     // No lease yet — a lease only exists once a manager approves.
-    const newApplication = await prisma.application.create({
-      data: {
-        applicationDate: new Date(applicationDate),
-        status: "Pending",
-        name,
-        email,
-        phoneNumber,
-        message,
-        property: {
-          connect: { id: propertyId },
+    const newApplication = await prisma.$transaction(async (tx) => {
+      const application = await tx.application.create({
+        data: {
+          applicationDate: new Date(applicationDate),
+          status: "Pending",
+          name,
+          email,
+          phoneNumber,
+          message,
+          property: {
+            connect: { id: propertyId },
+          },
+          tenant: {
+            connect: { cognitoId: req.user!.id },
+          },
         },
-        tenant: {
-          connect: { cognitoId: req.user!.id },
+        include: {
+          property: true,
+          tenant: true,
         },
-      },
-      include: {
-        property: true,
-        tenant: true,
-      },
+      });
+
+      await createNotification(tx, {
+        recipientId: property.managerCognitoId,
+        type: "ApplicationSubmitted",
+        title: "New application received",
+        body: `${name} applied for ${property.name}.`,
+        link: "/managers/applications",
+      });
+
+      return application;
     });
 
     res.status(201).json(newApplication);
@@ -161,11 +174,31 @@ export const updateApplicationStatus = async (
           where: { id: Number(id) },
           data: { status, leaseId: newLease.id },
         });
+
+        await createNotification(tx, {
+          recipientId: application.tenantCognitoId,
+          type: "ApplicationApproved",
+          title: "Application approved",
+          body: `Your application for ${application.property.name} has been approved.`,
+          link: "/tenants/applications",
+        });
       });
     } else {
-      await prisma.application.update({
-        where: { id: Number(id) },
-        data: { status },
+      await prisma.$transaction(async (tx) => {
+        await tx.application.update({
+          where: { id: Number(id) },
+          data: { status },
+        });
+
+        if (status === "Denied") {
+          await createNotification(tx, {
+            recipientId: application.tenantCognitoId,
+            type: "ApplicationDenied",
+            title: "Application denied",
+            body: `Your application for ${application.property.name} was not successful.`,
+            link: "/tenants/applications",
+          });
+        }
       });
     }
 

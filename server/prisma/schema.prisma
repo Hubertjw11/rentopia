@@ -57,6 +57,12 @@ enum ApplicationStatus {
   Approved
 }
 
+enum NotificationType {
+  ApplicationSubmitted
+  ApplicationApproved
+  ApplicationDenied
+}
+
 enum PaymentStatus {
   Pending
   Paid
@@ -190,4 +196,17 @@ model PaymentMethod {
   tenant Tenant @relation(fields: [tenantCognitoId], references: [cognitoId])
 
   @@index([tenantCognitoId])
+}
+
+model Notification {
+  id          Int              @id @default(autoincrement())
+  recipientId String           // cognitoId — a Manager or a Tenant
+  type        NotificationType
+  title       String
+  body        String
+  link        String?
+  isRead      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  @@index([recipientId, isRead])
 }
