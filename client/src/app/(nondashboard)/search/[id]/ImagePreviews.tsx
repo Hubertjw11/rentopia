@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
@@ -6,6 +6,7 @@ import React, { useState } from "react";
 
 const ImagePreviews = ({ images }: ImagePreviewsProps) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [failed, setFailed] = useState<Record<number, boolean>>({});
 
   const handlePrev = () => {
     setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
@@ -25,11 +26,12 @@ const ImagePreviews = ({ images }: ImagePreviewsProps) => {
           }`}
         >
           <Image
-            src={image}
+            src={failed[index] ? "/placeholder.jpg" : image}
             alt={`Property Image ${index + 1}`}
             fill
             priority={index === 0}
             className="object-cover cursor-pointer transition-transform duration-500 ease-in-out"
+            onError={() => setFailed((prev) => ({ ...prev, [index]: true }))}
           />
         </div>
       ))}
