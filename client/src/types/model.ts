@@ -157,3 +157,16 @@ export type ConversationRow = Omit<
   Conversation,
   "property" | "tenant" | "manager" | "lastMessage" | "unreadCount"
 >;
+
+export type Review = {
+  id: number;
+  rating: number;
+  comment: string | null;
+  propertyId: number;
+  tenantCognitoId: string;
+  createdAt: string;
+  updatedAt: string;
+  tenant: { cognitoId: string; name: string };
+};
+
+export type ReviewRow = Omit<Review, "tenant">;

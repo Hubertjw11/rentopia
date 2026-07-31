@@ -9,6 +9,7 @@ import PropertyDetails from "./PropertyDetails";
 import PropertyLocation from "./PropertyLocation";
 import ContactWidget from "./ContactWidget";
 import ApplicationModal from "./ApplicationModal";
+import PropertyReviews from "@/components/PropertyReviews";
 
 const SingleListing = () => {
   const { id } = useParams();
@@ -31,6 +32,7 @@ const SingleListing = () => {
           <PropertyOverview propertyId={propertyId} />
           <PropertyDetails propertyId={propertyId} />
           <PropertyLocation propertyId={propertyId} />
+          <PropertyReviews propertyId={propertyId} />
         </div>
 
         <div className="order-1 md:order-2">

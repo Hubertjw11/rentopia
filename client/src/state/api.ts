@@ -13,6 +13,8 @@ import {
   Conversation,
   ConversationRow,
   Message,
+  ReviewRow,
+  Review,
 } from "@/types/model";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { fetchAuthSession, getCurrentUser } from "aws-amplify/auth";
@@ -43,6 +45,7 @@ export const api = createApi({
     "Notifications",
     "Conversations",
     "Messages",
+    "Reviews"
   ],
   endpoints: (build) => ({
     getAuthUser: build.query<User, void>({
@@ -492,6 +495,54 @@ export const api = createApi({
         await withToast(queryFulfilled, { error: "Message failed to send." });
       },
     }),
+
+    // review related endpoints
+    getReviews: build.query<Review[], number>({
+      query: (propertyId) => `properties/${propertyId}/reviews`,
+      providesTags: ["Reviews"],
+    }),
+
+    upsertReview: build.mutation<
+      ReviewRow,
+      { propertyId: number; rating: number; comment?: string }
+    >({
+      query: ({ propertyId, ...body }) => ({
+        url: `properties/${propertyId}/reviews`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: (_result, _error, { propertyId }) => [
+        "Reviews",
+        { type: "PropertyDetails", id: propertyId },
+        { type: "Properties", id: propertyId },
+        { type: "Properties", id: "LIST" },
+      ],
+      async onQueryStarted(_, { queryFulfilled }) {
+        await withToast(queryFulfilled, {
+          success: "Review saved",
+          error: "Could not save your review.",
+        });
+      },
+    }),
+
+    deleteReview: build.mutation<
+      { message: string },
+      { id: number; propertyId: number }
+    >({
+      query: ({ id }) => ({ url: `reviews/${id}`, method: "DELETE" }),
+      invalidatesTags: (_result, _error, { propertyId }) => [
+        "Reviews",
+        { type: "PropertyDetails", id: propertyId },
+        { type: "Properties", id: propertyId },
+        { type: "Properties", id: "LIST" },
+      ],
+      async onQueryStarted(_, { queryFulfilled }) {
+        await withToast(queryFulfilled, {
+          success: "Review removed",
+          error: "Could not remove your review.",
+        });
+      },
+    }),
   }),
 });
 
@@ -528,4 +579,7 @@ export const {
   useGetMessagesQuery,
   useStartConversationMutation,
   useSendMessageMutation,
+  useGetReviewsQuery,
+  useUpsertReviewMutation,
+  useDeleteReviewMutation,
 } = api;

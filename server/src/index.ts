@@ -13,6 +13,7 @@ import leaseRoutes from "./routes/leaseRoutes";
 import applicationRoutes from "./routes/applicationRoutes";
 import notificationRoutes from "./routes/notificationRoutes";
 import conversationRoutes from "./routes/conversationRoutes";
+import reviewRoutes from "./routes/reviewRoutes";
 import { errorHandler } from "./middleware/errorHandler";
 
 // CONFIGURATIONS
@@ -42,6 +43,7 @@ app.get("/", (req, res) => {
 app.use("/applications", applicationRoutes);
 app.use("/notifications", notificationRoutes);
 app.use("/conversations", conversationRoutes);
+app.use("/reviews", reviewRoutes);
 app.use("/properties", propertyRoutes);
 app.use("/leases", leaseRoutes);
 app.use("/tenants", authMiddleware(["tenant"]), tenantRoutes);

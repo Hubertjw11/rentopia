@@ -29,6 +29,7 @@ import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useDownload } from "@/hooks/useDownload";
 import React, { useState } from "react";
+import ReviewForm from "@/components/ReviewForm";
 
 const ResidenceCard = ({
   property,
@@ -241,6 +242,7 @@ const Residence = () => {
           <PaymentMethods cognitoId={authUser?.cognitoInfo?.userId ?? ""} />
         </div>
         <BillingHistory payments={payments || []} />
+        {currentLease && <ReviewForm propertyId={Number(id)} />}
       </div>
     </div>
   );

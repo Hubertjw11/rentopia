@@ -98,8 +98,9 @@ model Property {
   leases       Lease[]
   applications Application[]
   favoritedBy  Tenant[]      @relation("TenantFavorites")
-  tenants      Tenant[]      @relation("TenantProperties")
-  conversations Conversation[] 
+  tenants       Tenant[]       @relation("TenantProperties")
+  conversations Conversation[]
+  reviews       Review[]
 }
 
 model Manager {
@@ -128,6 +129,7 @@ model Tenant {
   applications Application[]
   leases       Lease[]
   conversations Conversation[]
+  reviews       Review[]
 }
 
 model Location {
@@ -245,4 +247,20 @@ model Message {
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
+}
+
+model Review {
+  id              Int      @id @default(autoincrement())
+  rating          Int
+  comment         String?
+  propertyId      Int
+  tenantCognitoId String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id])
+  tenant   Tenant   @relation(fields: [tenantCognitoId], references: [cognitoId])
+
+  @@unique([propertyId, tenantCognitoId])
+  @@index([propertyId, createdAt])
 }
