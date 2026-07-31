@@ -130,6 +130,11 @@ export type AppNotification = {
   createdAt: string;
 };
 
+export type NotificationPage = {
+  notifications: AppNotification[];
+  hasMore: boolean;
+};
+
 export type Message = {
   id: number;
   conversationId: number;

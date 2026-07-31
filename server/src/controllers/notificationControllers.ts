@@ -1,18 +1,32 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
-import { parseId } from "../lib/params";
+import { parseId, parseNumber } from "../lib/params";
+
+const DEFAULT_NOTIFICATION_LIMIT = 20;
+const MAX_NOTIFICATION_LIMIT = 200;
 
 export const listNotifications = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
   try {
-    const notifications = await prisma.notification.findMany({
+    const requested = parseNumber(req.query.limit);
+    const limit =
+      requested === null || requested <= 0
+        ? DEFAULT_NOTIFICATION_LIMIT
+        : Math.min(Math.floor(requested), MAX_NOTIFICATION_LIMIT);
+
+    const window = await prisma.notification.findMany({
       where: { recipientId: req.user!.id },
-      orderBy: { createdAt: "desc" },
-      take: 20,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: limit + 1,
     });
-    res.json(notifications);
+
+    const hasMore = window.length > limit;
+    res.json({
+      notifications: hasMore ? window.slice(0, limit) : window,
+      hasMore,
+    });
   } catch (error) {
     console.error("Error retrieving notifications:", error);
     res.status(500).json({ message: "Error retrieving notifications" });

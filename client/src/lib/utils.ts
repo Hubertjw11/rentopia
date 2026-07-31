@@ -20,12 +20,21 @@ export function formatPriceValue(value: number | null, isMin: boolean) {
   return isMin ? `$${value}+` : `<$${value}`;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function timeAgo(iso: string) {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
+}
+
+ 
 export function cleanParams(params: Record<string, any>): Record<string, any> {
   return Object.fromEntries(
     Object.entries(params).filter(
       (
-        [_, value], // eslint-disable-line @typescript-eslint/no-unused-vars
+        [_, value],  
       ) =>
         value !== undefined &&
         value !== "any" &&
@@ -56,7 +65,7 @@ export const withToast = async <T>(
   }
 };
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 export const createNewUserInDatabase = async (
   user: any,
   idToken: any,
@@ -83,4 +92,4 @@ export const createNewUserInDatabase = async (
 
   return createUserResponse;
 };
-/* eslint-enable @typescript-eslint/no-explicit-any */
+ 

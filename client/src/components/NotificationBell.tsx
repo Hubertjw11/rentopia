@@ -10,40 +10,35 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import Link from "next/link";
 import { AppNotification } from "@/types/model";
+import { timeAgo } from "@/lib/utils";
 import {
+  useGetAuthUserQuery,
   useGetNotificationsQuery,
   useGetUnreadNotificationCountQuery,
   useMarkAllNotificationsReadMutation,
   useMarkNotificationReadMutation,
 } from "@/state/api";
 
-const timeAgo = (iso: string) => {
-  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.round(hours / 24)}d ago`;
-};
-
 const NotificationBell = () => {
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
-  // Poll the count only — it's a single integer, unlike the full list.
   const { data: unread } = useGetUnreadNotificationCountQuery(undefined, {
     pollingInterval: 60000,
   });
-  const {
-    data: notifications,
-    isLoading,
-    refetch,
-  } = useGetNotificationsQuery();
+  const { data, isLoading, refetch } = useGetNotificationsQuery();
+  const { data: authUser } = useGetAuthUserQuery();
   const [markRead] = useMarkNotificationReadMutation();
   const [markAllRead] = useMarkAllNotificationsReadMutation();
 
+  const notifications = data?.notifications;
   const count = unread?.count ?? 0;
+  const historyHref =
+    authUser?.userRole?.toLowerCase() === "manager"
+      ? "/managers/notifications"
+      : "/tenants/notifications";
 
   const handleSelect = async (
     id: number,
@@ -64,7 +59,7 @@ const NotificationBell = () => {
       }}
     >
       <DropdownMenuTrigger
-        className="relative hidden md:block focus:outline-none"
+        className="relative block focus:outline-none"
         aria-label={
           count > 0 ? `Notifications, ${count} unread` : "Notifications"
         }
@@ -79,7 +74,7 @@ const NotificationBell = () => {
 
       <DropdownMenuContent
         align="end"
-        className="w-80 p-0 bg-white text-primary-700"
+        className="w-80 max-w-[90vw] p-0 bg-white text-primary-700"
       >
         <div className="flex items-center justify-between px-3 py-2">
           <span className="text-sm font-semibold">Notifications</span>
@@ -132,14 +127,15 @@ const NotificationBell = () => {
           )}
         </div>
 
-        {notifications && notifications.length >= 20 && (
-          <>
-            <DropdownMenuSeparator className="bg-primary-200 m-0" />
-            <div className="px-3 py-2 text-center text-xs text-gray-500">
-              Showing the 20 most recent
-            </div>
-          </>
-        )}
+        <DropdownMenuSeparator className="bg-primary-200 m-0" />
+        <Link
+          href={historyHref}
+          scroll={false}
+          onClick={() => setOpen(false)}
+          className="block px-3 py-2 text-center text-xs font-medium text-primary-500 hover:text-primary-700"
+        >
+          {data?.hasMore ? "See older notifications" : "View all notifications"}
+        </Link>
       </DropdownMenuContent>
     </DropdownMenu>
   );

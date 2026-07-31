@@ -8,6 +8,7 @@ import {
   Lease,
   Application,
   AppNotification,
+  NotificationPage,
   LeaseWithTenant,
   ApplicationRow,
   Conversation,
@@ -46,7 +47,7 @@ export const api = createApi({
     "Notifications",
     "Conversations",
     "Messages",
-    "Reviews"
+    "Reviews",
   ],
   endpoints: (build) => ({
     getAuthUser: build.query<User, void>({
@@ -422,8 +423,19 @@ export const api = createApi({
     }),
 
     // notification related endpoints
-    getNotifications: build.query<AppNotification[], void>({
+    getNotifications: build.query<NotificationPage, void>({
       query: () => "notifications",
+      providesTags: ["Notifications"],
+    }),
+
+    // Separate from getNotifications on purpose: the bell and this page sit at
+    // different window sizes, and one shared entry would leave them refetching
+    // each other's args. The constant cache key is safe only while this has a
+    // single subscriber — don't wire up a second one at a different limit.
+    getNotificationHistory: build.query<NotificationPage, number>({
+      query: (limit) => ({ url: "notifications", params: { limit } }),
+      serializeQueryArgs: ({ endpointName }) => endpointName,
+      forceRefetch: ({ currentArg, previousArg }) => currentArg !== previousArg,
       providesTags: ["Notifications"],
     }),
 
@@ -581,6 +593,7 @@ export const {
   useSetDefaultPaymentMethodMutation,
   useDeletePaymentMethodMutation,
   useGetNotificationsQuery,
+  useGetNotificationHistoryQuery,
   useGetUnreadNotificationCountQuery,
   useMarkNotificationReadMutation,
   useMarkAllNotificationsReadMutation,
