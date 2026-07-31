@@ -1,10 +1,13 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
-import { parseId } from "../lib/params";
+import { parseId, parseNumber } from "../lib/params";
 
 const asParticipant = (userId: string) => ({
   OR: [{ tenantCognitoId: userId }, { managerCognitoId: userId }],
 });
+
+const DEFAULT_MESSAGE_LIMIT = 30;
+const MAX_MESSAGE_LIMIT = 300;
 
 export const listConversations = async (
   req: Request,
@@ -144,6 +147,11 @@ export const getMessages = async (
       return;
     }
     const userId = req.user!.id;
+    const requested = parseNumber(req.query.limit);
+    const limit =
+      requested === null || requested <= 0
+        ? DEFAULT_MESSAGE_LIMIT
+        : Math.min(Math.floor(requested), MAX_MESSAGE_LIMIT);
 
     const conversation = await prisma.conversation.findFirst({
       where: { id: conversationId, ...asParticipant(userId) },
@@ -154,19 +162,21 @@ export const getMessages = async (
       return;
     }
 
-    // Opening a thread marks the other party's messages read. Do this first so
-    // the payload reflects the new state.
     await prisma.message.updateMany({
       where: { conversationId, senderCognitoId: { not: userId }, readAt: null },
       data: { readAt: new Date() },
     });
 
-    const messages = await prisma.message.findMany({
+    const window = await prisma.message.findMany({
       where: { conversationId },
-      orderBy: { createdAt: "asc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: limit + 1,
     });
 
-    res.json(messages);
+    const hasMore = window.length > limit;
+    const messages = (hasMore ? window.slice(0, limit) : window).reverse();
+
+    res.json({ messages, hasMore });
   } catch (error) {
     console.error("Error retrieving messages:", error);
     res.status(500).json({ message: "Error retrieving messages" });

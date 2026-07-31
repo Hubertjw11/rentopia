@@ -12,6 +12,9 @@ import {
 import { Conversation, Message } from "@/types/model";
 import Loading from "./Loading";
 
+const PAGE_SIZE = 30;
+const MAX_MESSAGES = 300;
+
 const timeLabel = (iso: string) =>
   new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
@@ -43,10 +46,11 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
   const { data: conversations, isLoading } = useGetConversationsQuery();
   const selectedId = Number(searchParams.get("c")) || null;
 
-  const { data: messages } = useGetMessagesQuery(selectedId as number, {
-    skip: !selectedId,
-    pollingInterval: 10000,
-  });
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  const { data: page, isFetching } = useGetMessagesQuery(
+    { conversationId: selectedId as number, limit },
+    { skip: !selectedId, pollingInterval: 10000 },
+  );
 
   const [sendMessage, { isLoading: sending }] = useSendMessageMutation();
   const [draft, setDraft] = useState("");
@@ -56,6 +60,7 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
   if (selectedId !== draftFor) {
     setDraftFor(selectedId);
     setQuery("");
+    setLimit(PAGE_SIZE);
     setDraft(
       typeof window !== "undefined" && selectedId
         ? (window.localStorage.getItem(`rentopia:draft:${selectedId}`) ?? "")
@@ -71,7 +76,10 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     else window.localStorage.removeItem(key);
   };
   const endRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const jumpedRef = useRef(false);
+  const lastIdRef = useRef<number | null>(null);
+  const olderFromRef = useRef<number | null>(null);
 
   const [snapshotFor, setSnapshotFor] = useState<number | null>(null);
   const [unreadAtOpen, setUnreadAtOpen] = useState(0);
@@ -85,21 +93,43 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
 
   useEffect(() => {
     jumpedRef.current = false;
+    lastIdRef.current = null;
   }, [selectedId]);
 
   useEffect(() => {
-    if (!messages?.length) return;
+    const list = listRef.current;
+    if (!list) return;
+
+    if (olderFromRef.current !== null) {
+      list.scrollTop += list.scrollHeight - olderFromRef.current;
+      olderFromRef.current = null;
+      return;
+    }
+
+    const loaded = page?.messages ?? [];
+    const newestId = loaded.length ? loaded[loaded.length - 1].id : null;
+    if (newestId === null || newestId === lastIdRef.current) return;
+
+    lastIdRef.current = newestId;
     endRef.current?.scrollIntoView({
       behavior: jumpedRef.current ? "smooth" : "auto",
     });
     jumpedRef.current = true;
-  }, [messages]);
+  }, [page]);
 
   const selected = conversations?.find(
     (c: Conversation) => c.id === selectedId,
   );
 
-  const items = messages ?? [];
+  const items = page?.messages ?? [];
+  const hasMore = page?.hasMore ?? false;
+  const loadingOlder = isFetching && items.length < limit;
+
+  const loadOlder = () => {
+    olderFromRef.current = listRef.current?.scrollHeight ?? 0;
+    setLimit((current) => Math.min(current + PAGE_SIZE, MAX_MESSAGES));
+  };
+
   const trimmedQuery = query.trim().toLowerCase();
   const visible = trimmedQuery
     ? items.filter((m: Message) => m.body.toLowerCase().includes(trimmedQuery))
@@ -114,7 +144,7 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
         if (remaining === 0) return i;
       }
     }
-    return -1;
+    return items.length ? 0 : -1;
   })();
 
   const handleSend = async (e: React.FormEvent) => {
@@ -229,7 +259,27 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
               />
             </div>
 
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+            <div
+              ref={listRef}
+              className="flex-1 overflow-y-auto px-5 py-4 space-y-3"
+            >
+              {hasMore && limit < MAX_MESSAGES && (
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={loadOlder}
+                    disabled={loadingOlder}
+                    className="text-xs font-medium text-primary-700 hover:underline disabled:opacity-50"
+                  >
+                    {loadingOlder ? "Loading…" : "Load older messages"}
+                  </button>
+                </div>
+              )}
+              {hasMore && limit >= MAX_MESSAGES && (
+                <p className="text-center text-[10px] text-gray-400">
+                  Showing the most recent {MAX_MESSAGES} messages.
+                </p>
+              )}
               {trimmedQuery && visible.length === 0 && (
                 <p className="text-center text-sm text-gray-500 py-6">
                   No messages match “{query}”

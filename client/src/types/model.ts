@@ -139,6 +139,11 @@ export type Message = {
   createdAt: string;
 };
 
+export type MessagePage = {
+  messages: Message[];
+  hasMore: boolean;
+};
+
 export type Conversation = {
   id: number;
   propertyId: number;

@@ -13,6 +13,7 @@ import {
   Conversation,
   ConversationRow,
   Message,
+  MessagePage,
   ReviewRow,
   Review,
 } from "@/types/model";
@@ -458,10 +459,19 @@ export const api = createApi({
       providesTags: ["Conversations"],
     }),
 
-    getMessages: build.query<Message[], number>({
-      query: (conversationId) => `conversations/${conversationId}/messages`,
+    getMessages: build.query<
+      MessagePage,
+      { conversationId: number; limit: number }
+    >({
+      query: ({ conversationId, limit }) => ({
+        url: `conversations/${conversationId}/messages`,
+        params: { limit },
+      }),
+      serializeQueryArgs: ({ endpointName, queryArgs }) =>
+        `${endpointName}-${queryArgs.conversationId}`,
+      forceRefetch: ({ currentArg, previousArg }) =>
+        currentArg?.limit !== previousArg?.limit,
       providesTags: ["Messages"],
-      // Reading a thread marks it read server-side, so unread counts change.
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         await queryFulfilled;
         dispatch(api.util.invalidateTags(["Conversations"]));
