@@ -44,7 +44,7 @@ const MessageDropdown = () => {
       }}
     >
       <DropdownMenuTrigger
-        className="relative hidden md:block focus:outline-none"
+        className="relative block focus:outline-none"
         aria-label={count > 0 ? `Messages, ${count} unread` : "Messages"}
       >
         <MessageCircle className="w-6 h-6 cursor-pointer text-primary-200 hover:text-primary-400" />
@@ -57,7 +57,7 @@ const MessageDropdown = () => {
 
       <DropdownMenuContent
         align="end"
-        className="w-80 p-0 bg-white text-primary-700"
+        className="w-80 max-w-[90vw] p-0 bg-white text-primary-700"
       >
         <div className="px-3 py-2 text-sm font-semibold">Messages</div>
         <DropdownMenuSeparator className="bg-primary-200 m-0" />
