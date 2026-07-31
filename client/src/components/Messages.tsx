@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, MessageSquare, Send } from "lucide-react";
+import { ArrowLeft, CheckCheck, MessageSquare, Send } from "lucide-react";
 import {
   useGetAuthUserQuery,
   useGetConversationsQuery,
@@ -14,6 +14,23 @@ import Loading from "./Loading";
 
 const timeLabel = (iso: string) =>
   new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+const dayKey = (iso: string) => new Date(iso).toDateString();
+
+const dayLabel = (iso: string) => {
+  const date = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  if (dayKey(iso) === today.toDateString()) return "Today";
+  if (dayKey(iso) === yesterday.toDateString()) return "Yesterday";
+  return date.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
 
 const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
   const router = useRouter();
@@ -36,6 +53,16 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
   const endRef = useRef<HTMLDivElement>(null);
   const jumpedRef = useRef(false);
 
+  const [snapshotFor, setSnapshotFor] = useState<number | null>(null);
+  const [unreadAtOpen, setUnreadAtOpen] = useState(0);
+  if (conversations && selectedId !== snapshotFor) {
+    setSnapshotFor(selectedId);
+    setUnreadAtOpen(
+      conversations.find((c: Conversation) => c.id === selectedId)
+        ?.unreadCount ?? 0,
+    );
+  }
+
   useEffect(() => {
     jumpedRef.current = false;
   }, [selectedId]);
@@ -47,10 +74,24 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     });
     jumpedRef.current = true;
   }, [messages]);
-  
+
   const selected = conversations?.find(
     (c: Conversation) => c.id === selectedId,
   );
+
+  const items = messages ?? [];
+
+  const firstUnreadIndex = (() => {
+    if (unreadAtOpen <= 0) return -1;
+    let remaining = unreadAtOpen;
+    for (let i = items.length - 1; i >= 0; i--) {
+      if (items[i].senderCognitoId !== me) {
+        remaining -= 1;
+        if (remaining === 0) return i;
+      }
+    }
+    return -1;
+  })();
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,7 +141,7 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
                 {userType === "manager" ? c.tenant.name : c.manager.name}
               </span>
               {c.unreadCount > 0 && (
-                <span className="shrink-0 text-[10px] font-bold bg-secondary-700 text-white rounded-full px-1.5">
+                <span className="shrink-0 text-[10px] font-bold bg-secondary-700 text-white! rounded-full px-1.5">
                   {c.unreadCount}
                 </span>
               )}
@@ -110,6 +151,9 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
             </div>
             {c.lastMessage && (
               <div className="text-xs text-gray-600 truncate mt-0.5">
+                {c.lastMessage.senderCognitoId === me && (
+                  <span className="text-gray-400">You: </span>
+                )}
                 {c.lastMessage.body}
               </div>
             )}
@@ -155,32 +199,60 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-              {messages?.map((m: Message) => {
+              {items.map((m: Message, i: number) => {
                 const mine = m.senderCognitoId === me;
+                const prev = i > 0 ? items[i - 1] : null;
+                const showDay =
+                  !prev || dayKey(prev.createdAt) !== dayKey(m.createdAt);
+
                 return (
-                  <div
-                    key={m.id}
-                    className={`flex ${mine ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[75%] rounded-2xl px-4 py-2 ${
-                        mine
-                          ? "bg-primary-700 text-white rounded-br-sm"
-                          : "bg-primary-100 text-primary-800 rounded-bl-sm"
-                      }`}
-                    >
-                      <div className="text-sm whitespace-pre-wrap wrap-break-word">
-                        {m.body}
+                  <React.Fragment key={m.id}>
+                    {showDay && (
+                      <div className="flex justify-center">
+                        <span className="text-[10px] font-medium text-gray-500 bg-primary-100 rounded-full px-3 py-1">
+                          {dayLabel(m.createdAt)}
+                        </span>
                       </div>
+                    )}
+
+                    {i === firstUnreadIndex && (
+                      <div className="flex items-center gap-2 text-[10px] font-semibold text-secondary-700">
+                        <span className="h-px flex-1 bg-secondary-700/40" />
+                        {unreadAtOpen} unread{" "}
+                        {unreadAtOpen === 1 ? "message" : "messages"}
+                        <span className="h-px flex-1 bg-secondary-700/40" />
+                      </div>
+                    )}
+
+                    <div
+                      className={`flex ${mine ? "justify-end" : "justify-start"}`}
+                    >
                       <div
-                        className={`text-[10px] mt-1 ${
-                          mine ? "text-primary-300" : "text-gray-500"
+                        className={`max-w-[75%] rounded-2xl px-4 py-2 ${
+                          mine
+                            ? "bg-primary-700 text-white rounded-br-sm"
+                            : "bg-primary-100 text-primary-800 rounded-bl-sm"
                         }`}
                       >
-                        {timeLabel(m.createdAt)}
+                        <div className="text-sm whitespace-pre-wrap wrap-break-word">
+                          {m.body}
+                        </div>
+                        <div
+                          className={`text-[10px] mt-1 flex items-center gap-1 ${
+                            mine ? "text-primary-300" : "text-gray-500"
+                          }`}
+                        >
+                          {timeLabel(m.createdAt)}
+                          {mine && m.readAt && (
+                            <>
+                              <CheckCheck className="w-3 h-3" />
+                              <span>Seen</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </React.Fragment>
                 );
               })}
               <div ref={endRef} />
