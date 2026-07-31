@@ -5,7 +5,7 @@ import { wktToGeoJSON } from "@terraformer/wkt";
 import { S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import axios from "axios";
-import { parseId } from "../lib/params";
+import { parseId, parseNumber } from "../lib/params";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
@@ -37,42 +37,45 @@ export const getProperties = async (
     let whereConditions: Prisma.Sql[] = [];
 
     if (favoriteIds) {
-      const favoriteIdsArray = (favoriteIds as string).split(",").map(Number);
-      whereConditions.push(
-        Prisma.sql`p.id IN (${Prisma.join(favoriteIdsArray)})`,
-      );
+      const favoriteIdsArray = (favoriteIds as string)
+        .split(",")
+        .map((v) => parseNumber(v))
+        .filter((v): v is number => v !== null);
+      if (favoriteIdsArray.length) {
+        whereConditions.push(
+          Prisma.sql`p.id IN (${Prisma.join(favoriteIdsArray)})`,
+        );
+      }
     }
 
-    if (priceMin) {
-      whereConditions.push(
-        Prisma.sql`p."pricePerMonth" >= ${Number(priceMin)}`,
-      );
+    const priceMinNum = parseNumber(priceMin);
+    if (priceMinNum !== null) {
+      whereConditions.push(Prisma.sql`p."pricePerMonth" >= ${priceMinNum}`);
     }
 
-    if (priceMax) {
-      whereConditions.push(
-        Prisma.sql`p."pricePerMonth" <= ${Number(priceMax)}`,
-      );
+    const priceMaxNum = parseNumber(priceMax);
+    if (priceMaxNum !== null) {
+      whereConditions.push(Prisma.sql`p."pricePerMonth" <= ${priceMaxNum}`);
     }
 
-    if (beds && beds !== "any") {
-      whereConditions.push(Prisma.sql`p.beds >= ${Number(beds)}`);
+    const bedsNum = beds !== "any" ? parseNumber(beds) : null;
+    if (bedsNum !== null) {
+      whereConditions.push(Prisma.sql`p.beds >= ${bedsNum}`);
     }
 
-    if (baths && baths !== "any") {
-      whereConditions.push(Prisma.sql`p.baths >= ${Number(baths)}`);
+    const bathsNum = baths !== "any" ? parseNumber(baths) : null;
+    if (bathsNum !== null) {
+      whereConditions.push(Prisma.sql`p.baths >= ${bathsNum}`);
     }
 
-    if (squareFeetMin) {
-      whereConditions.push(
-        Prisma.sql`p."squareFeet" >= ${Number(squareFeetMin)}`,
-      );
+    const squareFeetMinNum = parseNumber(squareFeetMin);
+    if (squareFeetMinNum !== null) {
+      whereConditions.push(Prisma.sql`p."squareFeet" >= ${squareFeetMinNum}`);
     }
 
-    if (squareFeetMax) {
-      whereConditions.push(
-        Prisma.sql`p."squareFeet" <= ${Number(squareFeetMax)}`,
-      );
+    const squareFeetMaxNum = parseNumber(squareFeetMax);
+    if (squareFeetMaxNum !== null) {
+      whereConditions.push(Prisma.sql`p."squareFeet" <= ${squareFeetMaxNum}`);
     }
 
     if (propertyType && propertyType !== "any") {
@@ -105,9 +108,9 @@ export const getProperties = async (
       }
     }
 
-    if (latitude && longitude) {
-      const lat = parseFloat(latitude as string);
-      const lng = parseFloat(longitude as string);
+    const lat = parseNumber(latitude);
+    const lng = parseNumber(longitude);
+    if (lat !== null && lng !== null) {
       const radiusInKilometers = 1000;
       const degrees = radiusInKilometers / 111; // Converts kilometers to degrees
 
