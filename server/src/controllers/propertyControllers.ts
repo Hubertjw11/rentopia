@@ -5,6 +5,7 @@ import { wktToGeoJSON } from "@terraformer/wkt";
 import { S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import axios from "axios";
+import { parseId } from "../lib/params";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
@@ -146,10 +147,9 @@ export const getProperties = async (
     const properties = await prisma.$queryRaw(completeQuery);
 
     res.json(properties);
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error retrieving properties: ${error.message}` });
+  } catch (error) {
+    console.error("Error retrieving properties:", error);
+    res.status(500).json({ message: "Error retrieving properties" });
   }
 };
 
@@ -158,9 +158,14 @@ export const getProperty = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { id } = req.params;
+    const propertyId = parseId(req.params.id);
+    if (propertyId === null) {
+      res.status(400).json({ message: "Invalid property id" });
+      return;
+    }
+
     const property = await prisma.property.findUnique({
-      where: { id: Number(id) },
+      where: { id: propertyId },
       include: {
         location: true,
         manager: true,
@@ -192,10 +197,9 @@ export const getProperty = async (
       };
       res.json(propertyWithCoordinates);
     }
-  } catch (err: any) {
-    res
-      .status(500)
-      .json({ message: `Error retrieving property: ${err.message}` });
+  } catch (error) {
+    console.error("Error retrieving property:", error);
+    res.status(500).json({ message: "Error retrieving property" });
   }
 };
 
@@ -295,10 +299,8 @@ export const createProperty = async (
     });
 
     res.status(201).json(newProperty);
-  } catch (err: any) {
-    console.error("createProperty failed:", err);
-    res
-      .status(500)
-      .json({ message: `Error creating property: ${err.message}` });
+  } catch (error) {
+    console.error("createProperty failed:", error);
+    res.status(500).json({ message: "Error creating property" });
   }
 };

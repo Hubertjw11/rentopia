@@ -45,10 +45,9 @@ export const listConversations = async (
         unreadCount: unreadByConversation.get(conversation.id) ?? 0,
       })),
     );
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error retrieving conversations: ${error.message}` });
+  } catch (error) {
+    console.error("Error retrieving conversations:", error);
+    res.status(500).json({ message: "Error retrieving conversations" });
   }
 };
 
@@ -66,10 +65,9 @@ export const getUnreadMessageCount = async (
       },
     });
     res.json({ count });
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error counting messages: ${error.message}` });
+  } catch (error) {
+    console.error("Error counting messages:", error);
+    res.status(500).json({ message: "Error counting messages" });
   }
 };
 
@@ -129,10 +127,9 @@ export const createConversation = async (
     });
 
     res.status(201).json(conversation);
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error creating conversation: ${error.message}` });
+  } catch (error) {
+    console.error("Error creating conversation:", error);
+    res.status(500).json({ message: "Error creating conversation" });
   }
 };
 
@@ -170,10 +167,9 @@ export const getMessages = async (
     });
 
     res.json(messages);
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error retrieving messages: ${error.message}` });
+  } catch (error) {
+    console.error("Error retrieving messages:", error);
+    res.status(500).json({ message: "Error retrieving messages" });
   }
 };
 
@@ -218,9 +214,8 @@ export const sendMessage = async (
     });
 
     res.status(201).json(message);
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error sending message: ${error.message}` });
+  } catch (error) {
+    console.error("Error sending message:", error);
+    res.status(500).json({ message: "Error sending message" });
   }
 };

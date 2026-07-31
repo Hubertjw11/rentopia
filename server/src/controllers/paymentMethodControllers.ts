@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 import Stripe from "stripe";
+import { parseId } from "../lib/params";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -36,10 +37,9 @@ export const listPaymentMethods = async (
       orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
     });
     res.json(methods);
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error retrieving payment methods: ${error.message}` });
+  } catch (error) {
+    console.error("Error retrieving payment methods:", error);
+    res.status(500).json({ message: "Error retrieving payment methods" });
   }
 };
 
@@ -57,10 +57,9 @@ export const createSetupIntent = async (
       payment_method_types: ["card"],
     });
     res.json({ clientSecret: setupIntent.client_secret });
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error creating setup intent: ${error.message}` });
+  } catch (error) {
+    console.error("Error creating setup intent:", error);
+    res.status(500).json({ message: "Error creating setup intent" });
   }
 };
 
@@ -112,10 +111,9 @@ export const savePaymentMethod = async (
     });
 
     res.status(201).json(saved);
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error saving payment method: ${error.message}` });
+  } catch (error) {
+    console.error("Error saving payment method:", error);
+    res.status(500).json({ message: "Error saving payment method" });
   }
 };
 
@@ -124,10 +122,15 @@ export const setDefaultPaymentMethod = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { cognitoId, id } = req.params;
+    const { cognitoId } = req.params;
+    const methodId = parseId(req.params.id);
+    if (methodId === null) {
+      res.status(400).json({ message: "Invalid payment method id" });
+      return;
+    }
 
     const method = await prisma.paymentMethod.findUnique({
-      where: { id: Number(id) },
+      where: { id: methodId },
     });
     if (!method || method.tenantCognitoId !== cognitoId) {
       res.status(404).json({ message: "Payment method not found" });
@@ -140,7 +143,7 @@ export const setDefaultPaymentMethod = async (
         data: { isDefault: false },
       }),
       prisma.paymentMethod.update({
-        where: { id: Number(id) },
+        where: { id: methodId },
         data: { isDefault: true },
       }),
     ]);
@@ -150,10 +153,9 @@ export const setDefaultPaymentMethod = async (
       orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
     });
     res.json(methods);
-  } catch (error: any) {
-    res.status(500).json({
-      message: `Error setting default payment method: ${error.message}`,
-    });
+  } catch (error) {
+    console.error("Error setting default payment method:", error);
+    res.status(500).json({ message: "Error setting default payment method" });
   }
 };
 
@@ -162,10 +164,14 @@ export const deletePaymentMethod = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { cognitoId, id } = req.params;
-
+    const { cognitoId } = req.params;
+    const methodId = parseId(req.params.id);
+    if (methodId === null) {
+      res.status(400).json({ message: "Invalid payment method id" });
+      return;
+    }
     const method = await prisma.paymentMethod.findUnique({
-      where: { id: Number(id) },
+      where: { id: methodId },
     });
     if (!method || method.tenantCognitoId !== cognitoId) {
       res.status(404).json({ message: "Payment method not found" });
@@ -173,7 +179,7 @@ export const deletePaymentMethod = async (
     }
 
     // Remove our record first so the tenant's list is immediately correct.
-    await prisma.paymentMethod.delete({ where: { id: Number(id) } });
+    await prisma.paymentMethod.delete({ where: { id: methodId } });
 
     try {
       await stripe.paymentMethods.detach(method.stripePaymentMethodId);
@@ -199,9 +205,8 @@ export const deletePaymentMethod = async (
     }
 
     res.json({ message: "Payment method removed" });
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error deleting payment method: ${error.message}` });
+  } catch (error) {
+    console.error("Error deleting payment method:", error);
+    res.status(500).json({ message: "Error deleting payment method" });
   }
 };

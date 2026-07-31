@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
+import { parseId } from "../lib/params";
 
 export const listNotifications = async (
   req: Request,
@@ -12,10 +13,9 @@ export const listNotifications = async (
       take: 20,
     });
     res.json(notifications);
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error retrieving notifications: ${error.message}` });
+  } catch (error) {
+    console.error("Error retrieving notifications:", error);
+    res.status(500).json({ message: "Error retrieving notifications" });
   }
 };
 
@@ -28,10 +28,9 @@ export const getUnreadCount = async (
       where: { recipientId: req.user!.id, isRead: false },
     });
     res.json({ count });
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error counting notifications: ${error.message}` });
+  } catch (error) {
+    console.error("Error counting notifications:", error);
+    res.status(500).json({ message: "Error counting notifications" });
   }
 };
 
@@ -40,9 +39,15 @@ export const markAsRead = async (
   res: Response,
 ): Promise<void> => {
   try {
+    const notificationId = parseId(req.params.id);
+    if (notificationId === null) {
+      res.status(400).json({ message: "Invalid notification id" });
+      return;
+    }
+
     // updateMany scopes by recipient, so nobody can mark someone else's as read.
     const result = await prisma.notification.updateMany({
-      where: { id: Number(req.params.id), recipientId: req.user!.id },
+      where: { id: notificationId, recipientId: req.user!.id },
       data: { isRead: true },
     });
 
@@ -52,10 +57,9 @@ export const markAsRead = async (
     }
 
     res.json({ message: "Marked as read" });
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error updating notification: ${error.message}` });
+  } catch (error) {
+    console.error("Error updating notification:", error);
+    res.status(500).json({ message: "Error updating notification" });
   }
 };
 
@@ -69,9 +73,8 @@ export const markAllAsRead = async (
       data: { isRead: true },
     });
     res.json({ message: `Marked ${result.count} as read` });
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error updating notifications: ${error.message}` });
+  } catch (error) {
+    console.error("Error updating notifications:", error);
+    res.status(500).json({ message: "Error updating notifications" });
   }
 };

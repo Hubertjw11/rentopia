@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 import archiver = require("archiver");
 import { AgreementData, generateAgreementBuffer } from "../utils/pdfGenerator";
+import { parseId } from "../lib/params";
 
 const leaseInclude = {
   tenant: true,
@@ -36,9 +37,13 @@ export const downloadLeaseAgreement = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { id } = req.params;
+    const leaseId = parseId(req.params.id);
+    if (leaseId === null) {
+      res.status(400).json({ message: "Invalid lease id" });
+      return;
+    }
     const lease = await prisma.lease.findUnique({
-      where: { id: Number(id) },
+      where: { id: leaseId },
       include: leaseInclude,
     });
 
@@ -64,11 +69,9 @@ export const downloadLeaseAgreement = async (
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.setHeader("Content-Length", pdf.length);
     res.send(pdf);
-  } catch (error: any) {
+  } catch (error) {
     console.error("downloadLeaseAgreement failed:", error);
-    res
-      .status(500)
-      .json({ message: `Error generating agreement: ${error.message}` });
+    res.status(500).json({ message: "Error generating agreement" });
   }
 };
 
@@ -78,9 +81,13 @@ export const downloadPropertyAgreements = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { id } = req.params;
+    const propertyId = parseId(req.params.id);
+    if (propertyId === null) {
+      res.status(400).json({ message: "Invalid property id" });
+      return;
+    }
     const property = await prisma.property.findUnique({
-      where: { id: Number(id) },
+      where: { id: propertyId },
     });
 
     if (!property) {
@@ -93,7 +100,7 @@ export const downloadPropertyAgreements = async (
     }
 
     const leases = await prisma.lease.findMany({
-      where: { propertyId: Number(id) },
+      where: { propertyId },
       include: leaseInclude,
       orderBy: { startDate: "desc" },
     });
@@ -122,12 +129,10 @@ export const downloadPropertyAgreements = async (
     }
 
     await archive.finalize();
-  } catch (error: any) {
+  } catch (error) {
     console.error("downloadPropertyAgreements failed:", error);
     if (!res.headersSent) {
-      res
-        .status(500)
-        .json({ message: `Error generating agreements: ${error.message}` });
+      res.status(500).json({ message: "Error generating agreements" });
     }
   }
 };

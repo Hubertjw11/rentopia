@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { wktToGeoJSON } from "@terraformer/wkt";
+import { parseId } from "../lib/params";
 
 export const getTenant = async (
   req: Request<{ cognitoId: string }>,
@@ -21,10 +22,9 @@ export const getTenant = async (
     } else {
       res.status(404).json({ message: "Tenant not found" });
     }
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error retrieving tenant: ${error.message}` });
+  } catch (error) {
+    console.error("Error retrieving tenant:", error);
+    res.status(500).json({ message: "Error retrieving tenant" });
   }
 };
 
@@ -45,10 +45,9 @@ export const createTenant = async (
     });
 
     res.status(201).json(tenant);
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error creating tenant: ${error.message}` });
+  } catch (error) {
+    console.error("Error creating tenant:", error);
+    res.status(500).json({ message: "Error creating tenant" });
   }
 };
 
@@ -70,10 +69,9 @@ export const updateTenant = async (
     });
 
     res.json(updateTenant);
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error updating tenant: ${error.message}` });
+  } catch (error) {
+    console.error("Error updating tenant:", error);
+    res.status(500).json({ message: "Error updating tenant" });
   }
 };
 
@@ -115,10 +113,9 @@ export const getCurrentResidences = async (
     });
 
     res.json(residencesWithFormattedLocation);
-  } catch (err: any) {
-    res
-      .status(500)
-      .json({ message: `Error retrieving manager properties: ${err.message}` });
+  } catch (error) {
+    console.error("Error retrieving current residences:", error);
+    res.status(500).json({ message: "Error retrieving current residences" });
   }
 };
 
@@ -133,7 +130,11 @@ export const addFavoriteProperty = async (
       include: { favorites: true },
     });
 
-    const propertyIdNumber = Number(propertyId);
+    const propertyIdNumber = parseId(propertyId);
+    if (propertyIdNumber === null) {
+      res.status(400).json({ message: "Invalid property id" });
+      return;
+    }
     const existingFavorites = tenant?.favorites || [];
 
     if (!existingFavorites.some((fav) => fav.id === propertyIdNumber)) {
@@ -150,10 +151,9 @@ export const addFavoriteProperty = async (
     } else {
       res.status(409).json({ message: "Property already added as favorite" });
     }
-  } catch (err: any) {
-    res
-      .status(500)
-      .json({ message: `Error adding favorite property: ${err.message}` });
+  } catch (error) {
+    console.error("Error adding favorite property:", error);
+    res.status(500).json({ message: "Error adding favorite property" });
   }
 };
 
@@ -163,7 +163,11 @@ export const removeFavoriteProperty = async (
 ): Promise<void> => {
   try {
     const { cognitoId, propertyId } = req.params;
-    const propertyIdNumber = Number(propertyId);
+    const propertyIdNumber = parseId(propertyId);
+    if (propertyIdNumber === null) {
+      res.status(400).json({ message: "Invalid property id" });
+      return;
+    }
 
     const updatedTenant = await prisma.tenant.update({
       where: { cognitoId },
@@ -176,9 +180,8 @@ export const removeFavoriteProperty = async (
     });
 
     res.json(updatedTenant);
-  } catch (err: any) {
-    res
-      .status(500)
-      .json({ message: `Error removing favorite property: ${err.message}` });
+  } catch (error) {
+    console.error("Error removing favorite property:", error);
+    res.status(500).json({ message: "Error removing favorite property" });
   }
 };

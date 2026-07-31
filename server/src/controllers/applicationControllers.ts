@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 import { createNotification } from "../lib/notify";
+import { parseId } from "../lib/params";
 
 export const listApplications = async (
   req: Request<{ cognitoId: string }>,
@@ -53,10 +54,9 @@ export const listApplications = async (
     }));
 
     res.json(formattedApplications);
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error retrieving applications: ${error.message}` });
+  } catch (error) {
+    console.error("Error retrieving applications:", error);
+    res.status(500).json({ message: "Error retrieving applications" });
   }
 };
 
@@ -68,8 +68,14 @@ export const createApplication = async (
     const { applicationDate, propertyId, name, email, phoneNumber, message } =
       req.body;
 
+    const parsedPropertyId = parseId(propertyId);
+    if (parsedPropertyId === null) {
+      res.status(400).json({ message: "A valid propertyId is required" });
+      return;
+    }
+
     const property = await prisma.property.findUnique({
-      where: { id: propertyId },
+      where: { id: parsedPropertyId },
       select: { id: true, name: true, managerCognitoId: true },
     });
 
@@ -89,7 +95,7 @@ export const createApplication = async (
           phoneNumber,
           message,
           property: {
-            connect: { id: propertyId },
+            connect: { id: parsedPropertyId },
           },
           tenant: {
             connect: { cognitoId: req.user!.id },
@@ -113,10 +119,9 @@ export const createApplication = async (
     });
 
     res.status(201).json(newApplication);
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error creating application: ${error.message}` });
+  } catch (error) {
+    console.error("Error creating application:", error);
+    res.status(500).json({ message: "Error creating application" });
   }
 };
 
@@ -125,11 +130,15 @@ export const updateApplicationStatus = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { id } = req.params;
+    const applicationId = parseId(req.params.id);
+    if (applicationId === null) {
+      res.status(400).json({ message: "Invalid application id" });
+      return;
+    }
     const { status } = req.body;
 
     const application = await prisma.application.findUnique({
-      where: { id: Number(id) },
+      where: { id: applicationId },
       include: {
         property: true,
         tenant: true,
@@ -171,7 +180,7 @@ export const updateApplicationStatus = async (
         });
 
         await tx.application.update({
-          where: { id: Number(id) },
+          where: { id: applicationId },
           data: { status, leaseId: newLease.id },
         });
 
@@ -186,7 +195,7 @@ export const updateApplicationStatus = async (
     } else {
       await prisma.$transaction(async (tx) => {
         await tx.application.update({
-          where: { id: Number(id) },
+          where: { id: applicationId },
           data: { status },
         });
 
@@ -204,7 +213,7 @@ export const updateApplicationStatus = async (
 
     // Respond with the updated application details
     const updatedApplication = await prisma.application.findUnique({
-      where: { id: Number(id) },
+      where: { id: applicationId },
       include: {
         property: true,
         tenant: true,
@@ -213,9 +222,8 @@ export const updateApplicationStatus = async (
     });
 
     res.json(updatedApplication);
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error updating application status: ${error.message}` });
+  } catch (error) {
+    console.error("Error updating application status:", error);
+    res.status(500).json({ message: "Error updating application status" });
   }
 };

@@ -1,10 +1,8 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
+import { parseId } from "../lib/params";
 
-export const getLeases = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
+export const getLeases = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id, role } = req.user!;
     const leases = await prisma.lease.findMany({
@@ -18,10 +16,9 @@ export const getLeases = async (
       },
     });
     res.json(leases);
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error retrieving leases: ${error.message}` });
+  } catch (error) {
+    console.error("Error retrieving leases:", error);
+    res.status(500).json({ message: "Error retrieving leases" });
   }
 };
 
@@ -30,9 +27,14 @@ export const getPropertyLeases = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { id } = req.params;
+    const propertyId = parseId(req.params.id);
+    if (propertyId === null) {
+      res.status(400).json({ message: "Invalid property id" });
+      return;
+    }
+
     const property = await prisma.property.findUnique({
-      where: { id: Number(id) },
+      where: { id: propertyId },
     });
 
     if (!property) {
@@ -45,14 +47,13 @@ export const getPropertyLeases = async (
     }
 
     const leases = await prisma.lease.findMany({
-      where: { propertyId: Number(id) },
+      where: { propertyId },
       include: { tenant: true },
     });
     res.json(leases);
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error retrieving property leases: ${error.message}` });
+  } catch (error) {
+    console.error("Error retrieving property leases:", error);
+    res.status(500).json({ message: "Error retrieving property leases" });
   }
 };
 
@@ -62,9 +63,14 @@ export const getPropertyPayments = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { id } = req.params;
+    const propertyId = parseId(req.params.id);
+    if (propertyId === null) {
+      res.status(400).json({ message: "Invalid property id" });
+      return;
+    }
+
     const property = await prisma.property.findUnique({
-      where: { id: Number(id) },
+      where: { id: propertyId },
     });
 
     if (!property) {
@@ -77,13 +83,12 @@ export const getPropertyPayments = async (
     }
 
     const payments = await prisma.payment.findMany({
-      where: { lease: { propertyId: Number(id) } },
+      where: { lease: { propertyId } },
     });
     res.json(payments);
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error retrieving property payments: ${error.message}` });
+  } catch (error) {
+    console.error("Error retrieving property payments:", error);
+    res.status(500).json({ message: "Error retrieving property payments" });
   }
 };
 
@@ -92,9 +97,14 @@ export const getLeasePayments = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { id } = req.params;
+    const leaseId = parseId(req.params.id);
+    if (leaseId === null) {
+      res.status(400).json({ message: "Invalid lease id" });
+      return;
+    }
+
     const lease = await prisma.lease.findUnique({
-      where: { id: Number(id) },
+      where: { id: leaseId },
       include: { property: true },
     });
 
@@ -113,12 +123,11 @@ export const getLeasePayments = async (
     }
 
     const payments = await prisma.payment.findMany({
-      where: { leaseId: Number(id) },
+      where: { leaseId },
     });
     res.json(payments);
-  } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: `Error retrieving lease payments: ${error.message}` });
+  } catch (error) {
+    console.error("Error retrieving lease payments:", error);
+    res.status(500).json({ message: "Error retrieving lease payments" });
   }
 };
