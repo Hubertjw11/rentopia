@@ -50,6 +50,26 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
 
   const [sendMessage, { isLoading: sending }] = useSendMessageMutation();
   const [draft, setDraft] = useState("");
+  const [query, setQuery] = useState("");
+  const [draftFor, setDraftFor] = useState<number | null>(null);
+
+  if (selectedId !== draftFor) {
+    setDraftFor(selectedId);
+    setQuery("");
+    setDraft(
+      typeof window !== "undefined" && selectedId
+        ? (window.localStorage.getItem(`rentopia:draft:${selectedId}`) ?? "")
+        : "",
+    );
+  }
+
+  const updateDraft = (value: string) => {
+    setDraft(value);
+    if (typeof window === "undefined" || !selectedId) return;
+    const key = `rentopia:draft:${selectedId}`;
+    if (value) window.localStorage.setItem(key, value);
+    else window.localStorage.removeItem(key);
+  };
   const endRef = useRef<HTMLDivElement>(null);
   const jumpedRef = useRef(false);
 
@@ -80,6 +100,10 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
   );
 
   const items = messages ?? [];
+  const trimmedQuery = query.trim().toLowerCase();
+  const visible = trimmedQuery
+    ? items.filter((m: Message) => m.body.toLowerCase().includes(trimmedQuery))
+    : items;
 
   const firstUnreadIndex = (() => {
     if (unreadAtOpen <= 0) return -1;
@@ -98,10 +122,11 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     const body = draft.trim();
     if (!body || !selectedId) return;
     setDraft("");
+    updateDraft("");
     try {
       await sendMessage({ conversationId: selectedId, body }).unwrap();
     } catch {
-      setDraft(body);
+      updateDraft(body);
     }
   };
 
@@ -196,15 +221,26 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
                   {selected?.property.name}
                 </div>
               </div>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search…"
+                className="ml-auto w-32 md:w-40 border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary-400"
+              />
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-              {items.map((m: Message, i: number) => {
+              {trimmedQuery && visible.length === 0 && (
+                <p className="text-center text-sm text-gray-500 py-6">
+                  No messages match “{query}”
+                </p>
+              )}
+              {visible.map((m: Message, i: number) => {
                 const mine = m.senderCognitoId === me;
-                const prev = i > 0 ? items[i - 1] : null;
+                const prev = i > 0 ? visible[i - 1] : null;
                 const showDay =
-                  !prev || dayKey(prev.createdAt) !== dayKey(m.createdAt);
-
+                  !trimmedQuery &&
+                  (!prev || dayKey(prev.createdAt) !== dayKey(m.createdAt));
                 return (
                   <React.Fragment key={m.id}>
                     {showDay && (
@@ -215,7 +251,7 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
                       </div>
                     )}
 
-                    {i === firstUnreadIndex && (
+                    {!trimmedQuery && i === firstUnreadIndex && (
                       <div className="flex items-center gap-2 text-[10px] font-semibold text-secondary-700">
                         <span className="h-px flex-1 bg-secondary-700/40" />
                         {unreadAtOpen} unread{" "}
@@ -261,7 +297,7 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
             <form onSubmit={handleSend} className="border-t p-3 flex gap-2">
               <input
                 value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                onChange={(e) => updateDraft(e.target.value)}
                 placeholder="Write a message…"
                 className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-400"
               />
