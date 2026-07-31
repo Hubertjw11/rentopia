@@ -68,6 +68,12 @@ export const createApplication = async (
     const { applicationDate, propertyId, name, email, phoneNumber, message } =
       req.body;
 
+    const parsedDate = new Date(applicationDate);
+    if (isNaN(parsedDate.getTime())) {
+      res.status(400).json({ message: "A valid applicationDate is required" });
+      return;
+    }
+
     const parsedPropertyId = parseId(propertyId);
     if (parsedPropertyId === null) {
       res.status(400).json({ message: "A valid propertyId is required" });
@@ -88,7 +94,7 @@ export const createApplication = async (
     const newApplication = await prisma.$transaction(async (tx) => {
       const application = await tx.application.create({
         data: {
-          applicationDate: new Date(applicationDate),
+          applicationDate: parsedDate,
           status: "Pending",
           name,
           email,
@@ -136,6 +142,10 @@ export const updateApplicationStatus = async (
       return;
     }
     const { status } = req.body;
+    if (!["Pending", "Approved", "Denied"].includes(status)) {
+      res.status(400).json({ message: "Invalid status" });
+      return;
+    }
 
     const application = await prisma.application.findUnique({
       where: { id: applicationId },
@@ -152,6 +162,11 @@ export const updateApplicationStatus = async (
 
     if (application.property.managerCognitoId !== req.user!.id) {
       res.status(403).json({ message: "Access Denied!" });
+      return;
+    }
+
+    if (application.status === status) {
+      res.status(409).json({ message: `Application is already ${status}` });
       return;
     }
 

@@ -1,14 +1,12 @@
 import { Request, Response } from "express";
-import { PrismaClient, Prisma, Location } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { Prisma, Location } from "@prisma/client";
+import { randomUUID } from "crypto";
+import { prisma } from "../lib/prisma";
 import { wktToGeoJSON } from "@terraformer/wkt";
 import { S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import axios from "axios";
 import { parseId, parseNumber } from "../lib/params";
-
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
-const prisma = new PrismaClient({ adapter });
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
@@ -211,35 +209,81 @@ export const createProperty = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const files = req.files as Express.Multer.File[];
-    const {
-      address,
-      city,
-      state,
-      country,
-      postalCode,
-      managerCognitoId: _ignored,
-      ...propertyData
-    } = req.body;
-    const managerCognitoId = req.user!.id;
+    const files = (req.files as Express.Multer.File[] | undefined) ?? [];
+    if (files.length === 0) {
+      res.status(400).json({ message: "At least one photo is required" });
+      return;
+    }
 
-    const photoUrls = await Promise.all(
+    const text = (value: unknown): string | null =>
+      typeof value === "string" && value.trim() ? value.trim() : null;
+
+    const address = text(req.body.address);
+    const city = text(req.body.city);
+    const state = text(req.body.state);
+    const country = text(req.body.country);
+    const postalCode = text(req.body.postalCode);
+    const name = text(req.body.name);
+    const description = text(req.body.description);
+    const propertyType = text(req.body.propertyType);
+
+    if (
+      !address ||
+      !city ||
+      !state ||
+      !country ||
+      !postalCode ||
+      !name ||
+      !description ||
+      !propertyType
+    ) {
+      res.status(400).json({ message: "Some required fields are missing" });
+      return;
+    }
+
+    const pricePerMonth = parseNumber(req.body.pricePerMonth);
+    const securityDeposit = parseNumber(req.body.securityDeposit);
+    const applicationFee = parseNumber(req.body.applicationFee);
+    const beds = parseNumber(req.body.beds);
+    const baths = parseNumber(req.body.baths);
+    const squareFeet = parseNumber(req.body.squareFeet);
+
+    const positive = (n: number | null) => n !== null && n > 0;
+    if (
+      !positive(pricePerMonth) ||
+      !positive(securityDeposit) ||
+      !positive(applicationFee) ||
+      !positive(beds) ||
+      !positive(baths) ||
+      !positive(squareFeet) ||
+      !Number.isInteger(beds) ||
+      !Number.isInteger(squareFeet)
+    ) {
+      res.status(400).json({ message: "Invalid price, size or room count" });
+      return;
+    }
+
+    const uploads = await Promise.all(
       files.map(async (file) => {
-        const uploadParams = {
-          Bucket: process.env.S3_BUCKET_NAME!,
-          Key: `properties/${Date.now()}-${file.originalname}`,
-          Body: file.buffer,
-          ContentType: file.mimetype,
-        };
-
-        const uploadResult = await new Upload({
+        const result = await new Upload({
           client: s3Client,
-          params: uploadParams,
+          params: {
+            Bucket: process.env.S3_BUCKET_NAME!,
+            Key: `properties/${randomUUID()}-${file.originalname}`,
+            Body: file.buffer,
+            ContentType: file.mimetype,
+          },
         }).done();
 
-        return uploadResult.Location;
+        return result.Location;
       }),
     );
+
+    if (uploads.some((url) => !url)) {
+      res.status(502).json({ message: "A photo failed to upload" });
+      return;
+    }
+    const photoUrls = uploads as string[];
 
     const geocodingUrl = `https://nominatim.openstreetmap.org/search?${new URLSearchParams(
       {
@@ -251,54 +295,65 @@ export const createProperty = async (
         limit: "1",
       },
     ).toString()}`;
-    const geocodingResponse = await axios.get(geocodingUrl, {
-      headers: {
-        "User-Agent": "Rentopia (hubertjw05@gmail.com)",
-      },
-    });
-    const [longitude, latitude] =
-      geocodingResponse.data[0]?.lon && geocodingResponse.data[0]?.lat
-        ? [
-            parseFloat(geocodingResponse.data[0]?.lon),
-            parseFloat(geocodingResponse.data[0]?.lat),
-          ]
-        : [0, 0];
 
-    // create location
-    const [location] = await prisma.$queryRaw<Location[]>`
-      INSERT INTO "Location" (address, city, state, country, "postalCode", coordinates)
-      VALUES (${address}, ${city}, ${state}, ${country}, ${postalCode}, ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326))
-      RETURNING id, address, city, state, country, "postalCode", ST_AsText(coordinates) as coordinates;
-    `;
+    let geocodingResponse;
+    try {
+      geocodingResponse = await axios.get(geocodingUrl, {
+        headers: { "User-Agent": "Rentopia (hubertjw05@gmail.com)" },
+        timeout: 8000,
+      });
+    } catch (geocodingError) {
+      console.error("Geocoding request failed:", geocodingError);
+      res
+        .status(503)
+        .json({ message: "Address lookup is unavailable, try again shortly" });
+      return;
+    }
 
-    // create property
-    const newProperty = await prisma.property.create({
-      data: {
-        ...propertyData,
-        photoUrls,
-        locationId: location.id,
-        managerCognitoId,
-        amenities:
-          typeof propertyData.amenities === "string"
-            ? propertyData.amenities.split(",")
-            : [],
-        highlights:
-          typeof propertyData.highlights === "string"
-            ? propertyData.highlights.split(",")
-            : [],
-        isPetsAllowed: propertyData.isPetsAllowed === "true",
-        isParkingIncluded: propertyData.isParkingIncluded === "true",
-        pricePerMonth: parseFloat(propertyData.pricePerMonth),
-        securityDeposit: parseFloat(propertyData.securityDeposit),
-        applicationFee: parseFloat(propertyData.applicationFee),
-        beds: parseInt(propertyData.beds),
-        baths: parseFloat(propertyData.baths),
-        squareFeet: parseInt(propertyData.squareFeet),
-      },
-      include: {
-        location: true,
-        manager: true,
-      },
+    const match = geocodingResponse.data?.[0];
+    if (!match?.lon || !match?.lat) {
+      res
+        .status(400)
+        .json({ message: "That address could not be located, check it again" });
+      return;
+    }
+    const longitude = parseFloat(match.lon);
+    const latitude = parseFloat(match.lat);
+
+    const newProperty = await prisma.$transaction(async (tx) => {
+      const [location] = await tx.$queryRaw<Location[]>`
+        INSERT INTO "Location" (address, city, state, country, "postalCode", coordinates)
+        VALUES (${address}, ${city}, ${state}, ${country}, ${postalCode}, ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326))
+        RETURNING id, address, city, state, country, "postalCode", ST_AsText(coordinates) as coordinates;
+      `;
+
+      return tx.property.create({
+        data: {
+          name,
+          description,
+          propertyType: propertyType as never,
+          photoUrls,
+          locationId: location.id,
+          managerCognitoId: req.user!.id,
+          amenities:
+            typeof req.body.amenities === "string" && req.body.amenities
+              ? (req.body.amenities.split(",") as never)
+              : [],
+          highlights:
+            typeof req.body.highlights === "string" && req.body.highlights
+              ? (req.body.highlights.split(",") as never)
+              : [],
+          isPetsAllowed: req.body.isPetsAllowed === "true",
+          isParkingIncluded: req.body.isParkingIncluded === "true",
+          pricePerMonth: pricePerMonth!,
+          securityDeposit: securityDeposit!,
+          applicationFee: applicationFee!,
+          beds: beds!,
+          baths: baths!,
+          squareFeet: squareFeet!,
+        },
+        include: { location: true, manager: true },
+      });
     });
 
     res.status(201).json(newProperty);
