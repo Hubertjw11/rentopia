@@ -24,7 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Edit, X, Plus } from "lucide-react";
+import { Edit, X, Plus, type LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { registerPlugin } from "filepond";
 import { FilePond } from "react-filepond";
 import "filepond/dist/filepond.min.css";
@@ -46,9 +47,11 @@ interface FormFieldProps {
     | "switch"
     | "password"
     | "file"
-    | "multi-input";
+    | "multi-input"
+    | "multi-select";
   placeholder?: string;
   options?: { value: string; label: string }[];
+  icons?: Record<string, LucideIcon>;
   accept?: string;
   className?: string;
   labelClassName?: string;
@@ -66,6 +69,7 @@ export const CustomFormField: React.FC<FormFieldProps> = ({
   type = "text",
   placeholder,
   options,
+  icons,
   accept,
   className,
   inputClassName,
@@ -114,6 +118,42 @@ export const CustomFormField: React.FC<FormFieldProps> = ({
             </SelectContent>
           </Select>
         );
+      case "multi-select": {
+        const selected: string[] = Array.isArray(field.value) ? field.value : [];
+
+        const toggle = (value: string) =>
+          field.onChange(
+            selected.includes(value)
+              ? selected.filter((item) => item !== value)
+              : [...selected, value],
+          );
+
+        return (
+          <div className="flex flex-wrap gap-2">
+            {options?.map((option) => {
+              const Icon = icons?.[option.value];
+              const isOn = selected.includes(option.value);
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => toggle(option.value)}
+                  aria-pressed={isOn}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg border p-2 text-sm",
+                    isOn
+                      ? "border-black bg-gray-100"
+                      : "border-gray-200 hover:bg-gray-50",
+                  )}
+                >
+                  {Icon && <Icon className="h-4 w-4" />}
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        );
+      }
       case "switch":
         return (
           <div className="flex items-center space-x-2">

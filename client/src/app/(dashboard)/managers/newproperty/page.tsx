@@ -5,7 +5,14 @@ import Header from "@/components/Header";
 import { Form } from "@/components/ui/form";
 import { PropertyFormData, propertySchema } from "@/lib/schemas";
 import { useCreatePropertyMutation, useGetAuthUserQuery } from "@/state/api";
-import { AmenityEnum, HighlightEnum, PropertyTypeEnum } from "@/lib/constants";
+import {
+  AmenityEnum,
+  AmenityIcons,
+  HighlightEnum,
+  HighlightIcons,
+  PropertyTypeEnum,
+} from "@/lib/constants";
+import { formatEnumString } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { useForm, type Resolver } from "react-hook-form";
@@ -28,8 +35,8 @@ const NewProperty = () => {
       isPetsAllowed: true,
       isParkingIncluded: true,
       photoUrls: [],
-      amenities: "",
-      highlights: "",
+      amenities: [],
+      highlights: [],
       beds: 1,
       baths: 1,
       squareFeet: 1000,
@@ -54,7 +61,7 @@ const NewProperty = () => {
           formData.append("photos", file);
         });
       } else if (Array.isArray(value)) {
-        formData.append(key, JSON.stringify(value));
+        formData.append(key, value.join(","));
       } else {
         formData.append(key, String(value));
       }
@@ -172,20 +179,22 @@ const NewProperty = () => {
                 <CustomFormField
                   name="amenities"
                   label="Amenities"
-                  type="select"
+                  type="multi-select"
                   options={Object.keys(AmenityEnum).map((amenity) => ({
                     value: amenity,
-                    label: amenity,
+                    label: formatEnumString(amenity),
                   }))}
+                  icons={AmenityIcons}
                 />
                 <CustomFormField
                   name="highlights"
                   label="Highlights"
-                  type="select"
+                  type="multi-select"
                   options={Object.keys(HighlightEnum).map((highlight) => ({
                     value: highlight,
-                    label: highlight,
+                    label: formatEnumString(highlight),
                   }))}
+                  icons={HighlightIcons}
                 />
               </div>
             </div>

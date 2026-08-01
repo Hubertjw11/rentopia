@@ -11,7 +11,7 @@ import { useAppSelector } from "@/state/redux";
 import { Property } from "@/types/model";
 import React, { useState } from "react";
 
-const PAGE_SIZE = 3;
+const PAGE_SIZE = 12;
 
 const Listings = () => {
   const { data: authUser } = useGetAuthUserQuery();

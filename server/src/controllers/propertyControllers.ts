@@ -1,5 +1,11 @@
 import { Request, Response } from "express";
-import { Prisma, Location } from "@prisma/client";
+import {
+  Prisma,
+  Location,
+  Amenity,
+  Highlight,
+  PropertyType,
+} from "@prisma/client";
 import { randomUUID } from "crypto";
 import { prisma } from "../lib/prisma";
 import { wktToGeoJSON } from "@terraformer/wkt";
@@ -296,6 +302,36 @@ export const createProperty = async (
       return;
     }
 
+    const parseEnumList = <T extends string>(
+      raw: unknown,
+      allowed: readonly T[],
+    ): T[] | null => {
+      if (typeof raw !== "string" || !raw.trim()) return [];
+      const values = raw
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean);
+      return values.every((value) =>
+        (allowed as readonly string[]).includes(value),
+      )
+        ? (values as T[])
+        : null;
+    };
+
+    const amenities = parseEnumList(req.body.amenities, Object.values(Amenity));
+    const highlights = parseEnumList(
+      req.body.highlights,
+      Object.values(Highlight),
+    );
+    if (amenities === null || highlights === null) {
+      res.status(400).json({ message: "Unknown amenity or highlight" });
+      return;
+    }
+    if (!(Object.values(PropertyType) as string[]).includes(propertyType)) {
+      res.status(400).json({ message: "Unknown property type" });
+      return;
+    }
+
     const pricePerMonth = parseNumber(req.body.pricePerMonth);
     const securityDeposit = parseNumber(req.body.securityDeposit);
     const applicationFee = parseNumber(req.body.applicationFee);
@@ -386,18 +422,12 @@ export const createProperty = async (
         data: {
           name,
           description,
-          propertyType: propertyType as never,
+          propertyType: propertyType as PropertyType,
           photoUrls,
           locationId: location.id,
           managerCognitoId: req.user!.id,
-          amenities:
-            typeof req.body.amenities === "string" && req.body.amenities
-              ? (req.body.amenities.split(",") as never)
-              : [],
-          highlights:
-            typeof req.body.highlights === "string" && req.body.highlights
-              ? (req.body.highlights.split(",") as never)
-              : [],
+          amenities,
+          highlights,
           isPetsAllowed: req.body.isPetsAllowed === "true",
           isParkingIncluded: req.body.isParkingIncluded === "true",
           pricePerMonth: pricePerMonth!,
