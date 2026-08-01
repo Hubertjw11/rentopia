@@ -32,6 +32,7 @@ type MessageRow = {
   readAt: Date | null;
   createdAt: Date;
   deletedAt: Date | null;
+  editedAt: Date | null;
   replyTo: ReplyPreview | null;
 };
 
@@ -43,6 +44,7 @@ const toMessageDto = (m: MessageRow) => ({
   readAt: m.readAt,
   createdAt: m.createdAt,
   isDeleted: m.deletedAt !== null,
+  isEdited: m.deletedAt === null && m.editedAt !== null,
   replyTo: m.replyTo
     ? {
         id: m.replyTo.id,
@@ -157,7 +159,6 @@ export const createConversation = async (
     if (role === "tenant") {
       tenantId = userId;
     } else {
-      // A manager may only open a thread on a property they own.
       if (property.managerCognitoId !== userId) {
         res.status(403).json({ message: "Access Denied!" });
         return;
@@ -307,6 +308,66 @@ export const sendMessage = async (
   } catch (error) {
     console.error("Error sending message:", error);
     res.status(500).json({ message: "Error sending message" });
+  }
+};
+
+export const editMessage = async (
+  req: Request<{ id: string; messageId: string }>,
+  res: Response,
+): Promise<void> => {
+  try {
+    const conversationId = parseId(req.params.id);
+    const messageId = parseId(req.params.messageId);
+    if (conversationId === null || messageId === null) {
+      res.status(400).json({ message: "Invalid id" });
+      return;
+    }
+
+    const body = String(req.body.body ?? "").trim();
+    if (!body) {
+      res.status(400).json({ message: "Message body is required" });
+      return;
+    }
+
+    const userId = req.user!.id;
+
+    const conversation = await prisma.conversation.findFirst({
+      where: { id: conversationId, ...asParticipant(userId) },
+      select: { id: true },
+    });
+    if (!conversation) {
+      res.status(404).json({ message: "Conversation not found" });
+      return;
+    }
+
+    const result = await prisma.message.updateMany({
+      where: {
+        id: messageId,
+        conversationId,
+        senderCognitoId: userId,
+        deletedAt: null,
+      },
+      data: { body, editedAt: new Date() },
+    });
+
+    if (result.count === 0) {
+      res.status(404).json({ message: "Message not found" });
+      return;
+    }
+
+    const updated = await prisma.message.findUnique({
+      where: { id: messageId },
+      include: replyInclude,
+    });
+    if (!updated) {
+      res.status(404).json({ message: "Message not found" });
+      return;
+    }
+
+    res.json(toMessageDto(updated));
+  } catch (error) {
+    console.error("Error editing message:", error);
+    res.status(500).json({ message: "Error editing message" });
   }
 };
 

@@ -559,6 +559,44 @@ export const api = createApi({
       },
     }),
 
+    editMessage: build.mutation<
+      Message,
+      { conversationId: number; messageId: number; body: string }
+    >({
+      query: ({ conversationId, messageId, body }) => ({
+        url: `conversations/${conversationId}/messages/${messageId}`,
+        method: "PATCH",
+        body: { body },
+      }),
+      invalidatesTags: ["Messages", "Conversations"],
+      async onQueryStarted(
+        { conversationId, messageId, body },
+        { dispatch, queryFulfilled },
+      ) {
+        const patch = dispatch(
+          api.util.updateQueryData(
+            "getMessages",
+            { conversationId, limit: 0 },
+            (draft) => {
+              const target = draft.messages.find((m) => m.id === messageId);
+              if (target) {
+                target.body = body;
+                target.isEdited = true;
+              }
+            },
+          ),
+        );
+
+        try {
+          await withToast(queryFulfilled, {
+            error: "Could not save the edit.",
+          });
+        } catch {
+          patch.undo();
+        }
+      },
+    }),
+
     searchMessages: build.query<
       MessageSearchPage,
       { q: string; conversationId?: number }
@@ -717,6 +755,7 @@ export const {
   useDeleteConversationMutation,
   useDeleteMessagesMutation,
   useSearchMessagesQuery,
+  useEditMessageMutation,
   useGetReviewsQuery,
   useUpsertReviewMutation,
   useDeleteReviewMutation,

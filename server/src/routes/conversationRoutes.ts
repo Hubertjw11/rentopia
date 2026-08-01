@@ -9,6 +9,7 @@ import {
   deleteConversation,
   deleteMessages,
   searchMessages,
+  editMessage,
 } from "../controllers/conversationControllers";
 
 const router = express.Router();
@@ -23,6 +24,7 @@ router.post("/", anyUser, createConversation);
 router.get("/:id/messages", anyUser, getMessages);
 router.post("/:id/messages", anyUser, sendMessage);
 router.post("/:id/messages/delete", anyUser, deleteMessages);
+router.patch("/:id/messages/:messageId", anyUser, editMessage);
 router.delete("/:id", anyUser, deleteConversation);
 
 export default router;

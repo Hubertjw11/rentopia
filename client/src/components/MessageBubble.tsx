@@ -27,6 +27,7 @@ type MessageBubbleProps = {
   onReply: (message: Message) => void;
   onDelete: (ids: number[]) => void;
   onJumpTo: (id: number) => void;
+  onEdit: (message: Message) => void;
   searchTerm?: string;
   isCurrentMatch?: boolean;
 };
@@ -41,6 +42,9 @@ const MessageBubble = ({
   onReply,
   onDelete,
   onJumpTo,
+  onEdit,
+  me,
+  otherName,
   searchTerm,
   isCurrentMatch = false,
 }: MessageBubbleProps) => {
@@ -116,6 +120,14 @@ const MessageBubble = ({
         )}
         {mine && (
           <>
+            {!message.isDeleted && (
+              <DropdownMenuItem
+                onClick={() => onEdit(message)}
+                className="cursor-pointer text-sm"
+              >
+                Edit
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               onClick={() => onStartSelection(message.id)}
               className="cursor-pointer text-sm"
@@ -182,9 +194,7 @@ const MessageBubble = ({
             }`}
           >
             <span className="block font-semibold">
-              {message.replyTo.senderCognitoId === message.senderCognitoId
-                ? "You"
-                : "Them"}
+              {message.replyTo.senderCognitoId === me ? "You" : otherName}
             </span>
             <span className="block truncate">
               {message.replyTo.isDeleted

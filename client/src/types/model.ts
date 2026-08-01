@@ -184,6 +184,7 @@ export type Message = {
   readAt: string | null;
   createdAt: string;
   isDeleted: boolean;
+  isEdited: boolean;
   replyTo: ReplyPreview | null;
 };
 

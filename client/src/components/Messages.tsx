@@ -19,6 +19,7 @@ import {
   useDeleteConversationMutation,
   useDeleteMessagesMutation,
   useSearchMessagesQuery,
+  useEditMessageMutation,
 } from "@/state/api";
 import { Conversation, Message, MessageSearchHit } from "@/types/model";
 import Loading from "./Loading";
@@ -70,6 +71,7 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     useDeleteConversationMutation();
   const [deleteMessages, { isLoading: deletingMessages }] =
     useDeleteMessagesMutation();
+  const [editMessage, { isLoading: savingEdit }] = useEditMessageMutation();
 
   const [draft, setDraft] = useState("");
   const [query, setQuery] = useState("");
@@ -80,6 +82,8 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
   const [draftFor, setDraftFor] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [editing, setEditing] = useState<Message | null>(null);
+  const [stashedDraft, setStashedDraft] = useState("");
   const [pendingDelete, setPendingDelete] = useState<number[] | null>(null);
   const [threadDeleteFor, setThreadDeleteFor] = useState<number | null>(null);
 
@@ -114,6 +118,7 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     setLimit(seekId !== null ? MAX_MESSAGES : PAGE_SIZE);
     setSelectedIds([]);
     setReplyingTo(null);
+    setEditing(null);
     setPendingDelete(null);
     setDraft(
       typeof window !== "undefined" && selectedId
@@ -222,6 +227,10 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     (c: Conversation) => c.id === selectedId,
   );
 
+  const otherName =
+    (userType === "manager" ? selected?.tenant.name : selected?.manager.name) ??
+    "Them";
+
   const items = page?.messages ?? [];
   const hasMore = page?.hasMore ?? false;
   const loadingOlder = isFetching && items.length < limit;
@@ -261,9 +270,24 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     );
 
   const handleReply = (message: Message) => {
+    if (editing) cancelEdit();
     setReplyingTo(message);
     composerRef.current?.focus();
   };
+
+  const startEdit = (message: Message) => {
+    setReplyingTo(null);
+    setStashedDraft(draft);
+    setEditing(message);
+    setDraft(message.body);
+    composerRef.current?.focus();
+  };
+
+  function cancelEdit() {
+    setEditing(null);
+    setDraft(stashedDraft);
+    setStashedDraft("");
+  }
 
   const jumpTo = (id: number) => {
     if (scrollToMessage(id)) return;
@@ -285,7 +309,7 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     scrollToMessage(hit.id, false);
   };
 
-    const openSearchHit = (hit: MessageSearchHit) => {
+  const openSearchHit = (hit: MessageSearchHit) => {
     setQuery("");
     setDebouncedQuery("");
     setLimit(MAX_MESSAGES);
@@ -298,6 +322,19 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     e.preventDefault();
     const body = draft.trim();
     if (!body || !selectedId) return;
+
+    if (editing) {
+      try {
+        await editMessage({
+          conversationId: selectedId,
+          messageId: editing.id,
+          body,
+        }).unwrap();
+        cancelEdit();
+      } catch {}
+      return;
+    }
+
     const replyToId = replyingTo?.id;
     setDraft("");
     updateDraft("");
@@ -490,12 +527,7 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
                   <ArrowLeft className="w-5 h-5" />
                 </button>
                 <div>
-                  <div className="font-semibold">
-                    {selected &&
-                      (userType === "manager"
-                        ? selected.tenant.name
-                        : selected.manager.name)}
-                  </div>
+                  <div className="font-semibold">{selected && otherName}</div>
                   <div className="text-xs text-gray-500">
                     {selected?.property.name}
                   </div>
@@ -627,6 +659,9 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
                         onReply={handleReply}
                         onDelete={setPendingDelete}
                         onJumpTo={jumpTo}
+                        onEdit={startEdit}
+                        me={me}
+                        otherName={otherName}
                         searchTerm={inThreadSearch ? debouncedQuery : undefined}
                         isCurrentMatch={
                           inThreadSearch && m.id === currentMatchId
@@ -639,16 +674,33 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
               </div>
             )}
 
+            {editing && showThread && (
+              <div className="flex items-start gap-2 border-t bg-primary-100 px-3 py-2">
+                <div className="min-w-0 flex-1 border-l-2 border-secondary-700 pl-2">
+                  <div className="text-[10px] font-semibold text-secondary-700">
+                    Editing message
+                  </div>
+                  <div className="truncate text-xs text-gray-600">
+                    {editing.body}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  aria-label="Cancel edit"
+                  className="shrink-0 text-gray-500 hover:text-primary-700"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
             {replyingTo && showThread && (
               <div className="flex items-start gap-2 border-t bg-primary-100 px-3 py-2">
                 <div className="min-w-0 flex-1 border-l-2 border-primary-400 pl-2">
                   <div className="text-[10px] font-semibold text-primary-700">
                     Replying to{" "}
-                    {replyingTo.senderCognitoId === me
-                      ? "yourself"
-                      : userType === "manager"
-                        ? selected?.tenant.name
-                        : selected?.manager.name}
+                    {replyingTo.senderCognitoId === me ? "yourself" : otherName}
                   </div>
                   <div className="truncate text-xs text-gray-600">
                     {replyingTo.isDeleted
@@ -672,13 +724,19 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
                 <input
                   ref={composerRef}
                   value={draft}
-                  onChange={(e) => updateDraft(e.target.value)}
-                  placeholder="Write a message…"
+                  onChange={(e) =>
+                    editing
+                      ? setDraft(e.target.value)
+                      : updateDraft(e.target.value)
+                  }
+                  placeholder={
+                    editing ? "Edit your message…" : "Write a message…"
+                  }
                   className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-400"
                 />
                 <button
                   type="submit"
-                  disabled={sending || !draft.trim()}
+                  disabled={sending || savingEdit || !draft.trim()}
                   className="bg-primary-700 text-white rounded-lg px-4 flex items-center disabled:opacity-50"
                 >
                   <Send className="w-4 h-4" />

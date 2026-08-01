@@ -245,6 +245,7 @@ model Message {
   createdAt       DateTime  @default(now())
   deletedAt       DateTime?
   hiddenForSenderAt DateTime?
+  editedAt DateTime?
   replyToId       Int?
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
