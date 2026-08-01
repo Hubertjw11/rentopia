@@ -28,6 +28,8 @@ type MessageBubbleProps = {
   onDelete: (ids: number[]) => void;
   onJumpTo: (id: number) => void;
   onEdit: (message: Message) => void;
+  me?: string;
+  otherName: string;
   searchTerm?: string;
   isCurrentMatch?: boolean;
 };
