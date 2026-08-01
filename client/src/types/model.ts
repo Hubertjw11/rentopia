@@ -135,6 +135,13 @@ export type NotificationPage = {
   hasMore: boolean;
 };
 
+export type ReplyPreview = {
+  id: number;
+  senderCognitoId: string;
+  body: string;
+  isDeleted: boolean;
+};
+
 export type Message = {
   id: number;
   conversationId: number;
@@ -142,6 +149,8 @@ export type Message = {
   body: string;
   readAt: string | null;
   createdAt: string;
+  isDeleted: boolean;
+  replyTo: ReplyPreview | null;
 };
 
 export type MessagePage = {

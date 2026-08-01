@@ -2,21 +2,21 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, CheckCheck, MessageSquare, Send } from "lucide-react";
+import { ArrowLeft, MessageSquare, Send, Trash2, X } from "lucide-react";
 import {
   useGetAuthUserQuery,
   useGetConversationsQuery,
   useGetMessagesQuery,
   useSendMessageMutation,
+  useDeleteConversationMutation,
+  useDeleteMessagesMutation,
 } from "@/state/api";
 import { Conversation, Message } from "@/types/model";
 import Loading from "./Loading";
+import MessageBubble from "./MessageBubble";
 
 const PAGE_SIZE = 30;
 const MAX_MESSAGES = 300;
-
-const timeLabel = (iso: string) =>
-  new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
 const dayKey = (iso: string) => new Date(iso).toDateString();
 
@@ -53,14 +53,26 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
   );
 
   const [sendMessage, { isLoading: sending }] = useSendMessageMutation();
+  const [deleteConversation, { isLoading: deletingThread }] =
+    useDeleteConversationMutation();
+  const [deleteMessages, { isLoading: deletingMessages }] =
+    useDeleteMessagesMutation();
+
   const [draft, setDraft] = useState("");
   const [query, setQuery] = useState("");
   const [draftFor, setDraftFor] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<number[] | null>(null);
+  const [threadDeleteFor, setThreadDeleteFor] = useState<number | null>(null);
 
   if (selectedId !== draftFor) {
     setDraftFor(selectedId);
     setQuery("");
     setLimit(PAGE_SIZE);
+    setSelectedIds([]);
+    setReplyingTo(null);
+    setPendingDelete(null);
     setDraft(
       typeof window !== "undefined" && selectedId
         ? (window.localStorage.getItem(`rentopia:draft:${selectedId}`) ?? "")
@@ -75,11 +87,14 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     if (value) window.localStorage.setItem(key, value);
     else window.localStorage.removeItem(key);
   };
+
   const endRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLInputElement>(null);
   const jumpedRef = useRef(false);
   const lastIdRef = useRef<number | null>(null);
   const olderFromRef = useRef<number | null>(null);
+  const seekingIdRef = useRef<number | null>(null);
 
   const [snapshotFor, setSnapshotFor] = useState<number | null>(null);
   const [unreadAtOpen, setUnreadAtOpen] = useState(0);
@@ -99,6 +114,22 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
   useEffect(() => {
     const list = listRef.current;
     if (!list) return;
+
+    const seeking = seekingIdRef.current;
+    if (seeking !== null) {
+      seekingIdRef.current = null;
+      olderFromRef.current = null;
+      const target = document.getElementById(`msg-${seeking}`);
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        target.classList.add("ring-2", "ring-secondary-500");
+        window.setTimeout(
+          () => target.classList.remove("ring-2", "ring-secondary-500"),
+          1200,
+        );
+      }
+      return;
+    }
 
     if (olderFromRef.current !== null) {
       list.scrollTop += list.scrollHeight - olderFromRef.current;
@@ -124,6 +155,11 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
   const items = page?.messages ?? [];
   const hasMore = page?.hasMore ?? false;
   const loadingOlder = isFetching && items.length < limit;
+  const selectionMode = selectedIds.length > 0;
+
+  const canDeleteForEveryone = pendingDelete
+    ? items.some((m: Message) => pendingDelete.includes(m.id) && !m.isDeleted)
+    : false;
 
   const loadOlder = () => {
     olderFromRef.current = listRef.current?.scrollHeight ?? 0;
@@ -147,16 +183,80 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     return items.length ? 0 : -1;
   })();
 
+  const toggleSelect = (id: number) =>
+    setSelectedIds((current) =>
+      current.includes(id)
+        ? current.filter((existing) => existing !== id)
+        : [...current, id],
+    );
+
+  const startSelection = (id: number) =>
+    setSelectedIds((current) => (current.includes(id) ? current : [...current, id]));
+
+  const handleReply = (message: Message) => {
+    setReplyingTo(message);
+    composerRef.current?.focus();
+  };
+
+  const jumpTo = (id: number) => {
+    const target = document.getElementById(`msg-${id}`);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      target.classList.add("ring-2", "ring-secondary-500");
+      window.setTimeout(
+        () => target.classList.remove("ring-2", "ring-secondary-500"),
+        1200,
+      );
+      return;
+    }
+    if (hasMore && limit < MAX_MESSAGES) {
+      seekingIdRef.current = id;
+      setLimit(MAX_MESSAGES);
+    }
+  };
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     const body = draft.trim();
     if (!body || !selectedId) return;
+    const replyToId = replyingTo?.id;
     setDraft("");
     updateDraft("");
+    setReplyingTo(null);
     try {
-      await sendMessage({ conversationId: selectedId, body }).unwrap();
+      await sendMessage({ conversationId: selectedId, body, replyToId }).unwrap();
     } catch {
       updateDraft(body);
+    }
+  };
+
+  const runDelete = async (scope: "me" | "everyone") => {
+    if (!selectedId || !pendingDelete?.length) return;
+    try {
+      await deleteMessages({
+        conversationId: selectedId,
+        ids: pendingDelete,
+        scope,
+      }).unwrap();
+      setSelectedIds([]);
+    } catch {
+    } finally {
+      setPendingDelete(null);
+    }
+  };
+
+  const handleDeleteThread = async (conversationId: number) => {
+    try {
+      await deleteConversation(conversationId).unwrap();
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(`rentopia:draft:${conversationId}`);
+      }
+      if (conversationId === selectedId) {
+        router.push(pathname, { scroll: false });
+      }
+    } catch {
+    } finally {
+      setThreadDeleteFor(null);
     }
   };
 
@@ -182,43 +282,84 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
         }`}
       >
         {conversations.map((c: Conversation) => (
-          <button
+          <div
             key={c.id}
-            onClick={() =>
-              router.push(`${pathname}?c=${c.id}`, { scroll: false })
-            }
-            className={`w-full text-left px-4 py-3 border-b hover:bg-primary-100 ${
+            className={`group relative border-b ${
               c.id === selectedId ? "bg-primary-100" : ""
             }`}
           >
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-semibold text-sm truncate">
-                {userType === "manager" ? c.tenant.name : c.manager.name}
-              </span>
-              {c.unreadCount > 0 && (
-                <span className="shrink-0 text-[10px] font-bold bg-secondary-700 text-white! rounded-full px-1.5">
-                  {c.unreadCount}
+            <button
+              onClick={() =>
+                router.push(`${pathname}?c=${c.id}`, { scroll: false })
+              }
+              className="flex min-h-20 w-full flex-col justify-center px-4 py-3 pr-10 text-left hover:bg-primary-100"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-sm truncate">
+                  {userType === "manager" ? c.tenant.name : c.manager.name}
                 </span>
+                {c.unreadCount > 0 && (
+                  <span className="shrink-0 text-[10px] font-bold bg-secondary-700 text-white! rounded-full px-1.5">
+                    {c.unreadCount}
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-gray-500 truncate">
+                {c.property.name}
+              </div>
+              {c.lastMessage && (
+                <div className="text-xs text-gray-600 truncate mt-0.5">
+                  {c.lastMessage.senderCognitoId === me && (
+                    <span className="text-gray-400">You: </span>
+                  )}
+                  {c.lastMessage.isDeleted
+                    ? "This message was deleted"
+                    : c.lastMessage.body}
+                </div>
+              )}
+            </button>
+
+            <div className="absolute right-1 top-2">
+              {threadDeleteFor === c.id ? (
+                <div className="flex items-center gap-1 rounded-md bg-white px-2 py-1 shadow">
+                  <span className="text-[10px] text-gray-500">Delete both?</span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteThread(c.id)}
+                    disabled={deletingThread}
+                    className="text-[10px] font-semibold text-secondary-700 hover:underline disabled:opacity-50"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setThreadDeleteFor(null)}
+                    className="text-[10px] text-gray-500 hover:underline"
+                  >
+                    No
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setThreadDeleteFor(c.id)}
+                  aria-label="Delete conversation"
+                  title="Delete conversation"
+                  className="p-1 text-gray-400 hover:text-secondary-700 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               )}
             </div>
-            <div className="text-xs text-gray-500 truncate">
-              {c.property.name}
-            </div>
-            {c.lastMessage && (
-              <div className="text-xs text-gray-600 truncate mt-0.5">
-                {c.lastMessage.senderCognitoId === me && (
-                  <span className="text-gray-400">You: </span>
-                )}
-                {c.lastMessage.body}
-              </div>
-            )}
-          </button>
+          </div>
         ))}
       </div>
 
       {/* Thread view */}
       <div
-        className={`flex-1 min-w-0 flex-col ${selectedId ? "flex" : "hidden md:flex"}`}
+        className={`relative flex-1 min-w-0 flex-col ${
+          selectedId ? "flex" : "hidden md:flex"
+        }`}
       >
         {!selectedId ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
@@ -232,32 +373,56 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
           </div>
         ) : (
           <>
-            <div className="px-5 py-3 border-b flex items-center gap-3">
-              <button
-                onClick={() => router.push(pathname, { scroll: false })}
-                className="md:hidden text-primary-600 text-sm"
-                aria-label="Back to conversations"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <div>
-                <div className="font-semibold">
-                  {selected &&
-                    (userType === "manager"
-                      ? selected.tenant.name
-                      : selected.manager.name)}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {selected?.property.name}
-                </div>
+            {selectionMode ? (
+              <div className="min-h-20 px-5 py-3 border-b flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds([])}
+                  aria-label="Cancel selection"
+                  className="text-primary-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                <span className="text-sm font-semibold">
+                  {selectedIds.length} selected
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPendingDelete(selectedIds)}
+                  aria-label="Delete selected"
+                  className="ml-auto text-secondary-700 hover:opacity-70"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search…"
-                className="ml-auto w-32 md:w-40 border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary-400"
-              />
-            </div>
+            ) : (
+              <div className="min-h-20 px-5 py-3 border-b flex items-center gap-3">
+                <button
+                  onClick={() => router.push(pathname, { scroll: false })}
+                  className="md:hidden text-primary-600 text-sm"
+                  aria-label="Back to conversations"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div>
+                  <div className="font-semibold">
+                    {selected &&
+                      (userType === "manager"
+                        ? selected.tenant.name
+                        : selected.manager.name)}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {selected?.property.name}
+                  </div>
+                </div>
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search…"
+                  className="ml-auto w-28 md:w-40 border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary-400"
+                />
+              </div>
+            )}
 
             <div
               ref={listRef}
@@ -286,7 +451,6 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
                 </p>
               )}
               {visible.map((m: Message, i: number) => {
-                const mine = m.senderCognitoId === me;
                 const prev = i > 0 ? visible[i - 1] : null;
                 const showDay =
                   !trimmedQuery &&
@@ -310,42 +474,54 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
                       </div>
                     )}
 
-                    <div
-                      className={`flex ${mine ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`max-w-[75%] rounded-2xl px-4 py-2 ${
-                          mine
-                            ? "bg-primary-700 text-white rounded-br-sm"
-                            : "bg-primary-100 text-primary-800 rounded-bl-sm"
-                        }`}
-                      >
-                        <div className="text-sm whitespace-pre-wrap wrap-break-word">
-                          {m.body}
-                        </div>
-                        <div
-                          className={`text-[10px] mt-1 flex items-center gap-1 ${
-                            mine ? "text-primary-300" : "text-gray-500"
-                          }`}
-                        >
-                          {timeLabel(m.createdAt)}
-                          {mine && m.readAt && (
-                            <>
-                              <CheckCheck className="w-3 h-3" />
-                              <span>Seen</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                    <MessageBubble
+                      message={m}
+                      mine={m.senderCognitoId === me}
+                      selectionMode={selectionMode}
+                      isSelected={selectedIds.includes(m.id)}
+                      onToggleSelect={toggleSelect}
+                      onStartSelection={startSelection}
+                      onReply={handleReply}
+                      onDelete={setPendingDelete}
+                      onJumpTo={jumpTo}
+                    />
                   </React.Fragment>
                 );
               })}
               <div ref={endRef} />
             </div>
 
+            {replyingTo && (
+              <div className="flex items-start gap-2 border-t bg-primary-100 px-3 py-2">
+                <div className="min-w-0 flex-1 border-l-2 border-primary-400 pl-2">
+                  <div className="text-[10px] font-semibold text-primary-700">
+                    Replying to{" "}
+                    {replyingTo.senderCognitoId === me
+                      ? "yourself"
+                      : userType === "manager"
+                        ? selected?.tenant.name
+                        : selected?.manager.name}
+                  </div>
+                  <div className="truncate text-xs text-gray-600">
+                    {replyingTo.isDeleted
+                      ? "This message was deleted"
+                      : replyingTo.body}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReplyingTo(null)}
+                  aria-label="Cancel reply"
+                  className="shrink-0 text-gray-500 hover:text-primary-700"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
             <form onSubmit={handleSend} className="border-t p-3 flex gap-2">
               <input
+                ref={composerRef}
                 value={draft}
                 onChange={(e) => updateDraft(e.target.value)}
                 placeholder="Write a message…"
@@ -359,6 +535,44 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
                 <Send className="w-4 h-4" />
               </button>
             </form>
+
+            {pendingDelete && (
+              <div className="absolute inset-0 z-10 flex items-end justify-center bg-black/20 p-4">
+                <div className="w-full max-w-sm rounded-xl bg-white p-4 shadow-lg">
+                  <p className="text-sm font-semibold text-primary-700">
+                    Delete {pendingDelete.length}{" "}
+                    {pendingDelete.length === 1 ? "message" : "messages"}?
+                  </p>
+                  <div className="mt-3 flex flex-col gap-2">
+                    {canDeleteForEveryone && (
+                      <button
+                        type="button"
+                        onClick={() => runDelete("everyone")}
+                        disabled={deletingMessages}
+                        className="rounded-lg bg-secondary-700 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                      >
+                        Delete for everyone
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => runDelete("me")}
+                      disabled={deletingMessages}
+                      className="rounded-lg border px-3 py-2 text-sm font-medium text-primary-700 disabled:opacity-50"
+                    >
+                      Delete for me
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPendingDelete(null)}
+                      className="px-3 py-2 text-sm text-gray-500"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

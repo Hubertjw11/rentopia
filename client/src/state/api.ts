@@ -485,7 +485,11 @@ export const api = createApi({
         currentArg?.limit !== previousArg?.limit,
       providesTags: ["Messages"],
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
-        await queryFulfilled;
+        try {
+          await queryFulfilled;
+        } catch {
+          return; 
+        }
         dispatch(api.util.invalidateTags(["Conversations"]));
       },
     }),
@@ -505,16 +509,75 @@ export const api = createApi({
 
     sendMessage: build.mutation<
       Message,
-      { conversationId: number; body: string }
+      { conversationId: number; body: string; replyToId?: number }
     >({
-      query: ({ conversationId, body }) => ({
+      query: ({ conversationId, ...body }) => ({
         url: `conversations/${conversationId}/messages`,
         method: "POST",
-        body: { body },
+        body,
       }),
       invalidatesTags: ["Messages", "Conversations"],
       async onQueryStarted(_, { queryFulfilled }) {
         await withToast(queryFulfilled, { error: "Message failed to send." });
+      },
+    }),
+
+    deleteMessages: build.mutation<
+      { count: number },
+      { conversationId: number; ids: number[]; scope: "me" | "everyone" }
+    >({
+      query: ({ conversationId, ...body }) => ({
+        url: `conversations/${conversationId}/messages/delete`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Messages", "Conversations"],
+      async onQueryStarted(
+        { conversationId, ids, scope },
+        { dispatch, queryFulfilled },
+      ) {
+        const patch = dispatch(
+          api.util.updateQueryData(
+            "getMessages",
+            { conversationId, limit: 0 },
+            (draft) => {
+              if (scope === "me") {
+                draft.messages = draft.messages.filter(
+                  (m) => !ids.includes(m.id),
+                );
+                return;
+              }
+              for (const message of draft.messages) {
+                if (ids.includes(message.id)) {
+                  message.isDeleted = true;
+                  message.body = "";
+                }
+              }
+            },
+          ),
+        );
+
+        try {
+          await withToast(queryFulfilled, {
+            error: "Could not delete those messages.",
+          });
+        } catch {
+          patch.undo();
+        }
+      },
+    }),
+
+    deleteConversation: build.mutation<{ message: string }, number>({
+      query: (conversationId) => ({
+        url: `conversations/${conversationId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Conversations", "Messages"],
+      async onQueryStarted(_, { queryFulfilled }) {
+        await withToast(queryFulfilled, {
+          success: "Conversation deleted",
+          error: "Could not delete the conversation.",
+        });
       },
     }),
 
@@ -602,6 +665,8 @@ export const {
   useGetMessagesQuery,
   useStartConversationMutation,
   useSendMessageMutation,
+  useDeleteConversationMutation,
+  useDeleteMessagesMutation,
   useGetReviewsQuery,
   useUpsertReviewMutation,
   useDeleteReviewMutation,
