@@ -18,6 +18,11 @@ const DEFAULT_PROPERTY_LIMIT = 12;
 const MAX_PROPERTY_LIMIT = 50;
 const MAX_MAP_MARKERS = 1000;
 
+const propertySource = Prisma.sql`
+  FROM "Property" p
+  JOIN "Location" l ON p."locationId" = l.id
+`;
+
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
 });
@@ -152,8 +157,7 @@ export const getProperties = async (
 
     const totals = await prisma.$queryRaw<{ count: number }[]>`
       SELECT COUNT(*)::int AS count
-      FROM "Property" p
-      JOIN "Location" l ON p."locationId" = l.id
+      ${propertySource}
       ${whereClause}
     `;
     const total = totals[0]?.count ?? 0;
@@ -173,8 +177,7 @@ export const getProperties = async (
             'latitude', ST_Y(l."coordinates"::geometry)
           )
         ) as location
-      FROM "Property" p
-      JOIN "Location" l ON p."locationId" = l.id
+      ${propertySource}
       ${whereClause}
       ORDER BY p."postedDate" DESC, p.id DESC
       LIMIT ${limit} OFFSET ${offset}
@@ -201,8 +204,7 @@ export const getPropertyMarkers = async (
         p."pricePerMonth",
         ST_X(l."coordinates"::geometry) AS longitude,
         ST_Y(l."coordinates"::geometry) AS latitude
-      FROM "Property" p
-      JOIN "Location" l ON p."locationId" = l.id
+      ${propertySource}
       ${whereClause}
       ORDER BY p.id
       LIMIT ${MAX_MAP_MARKERS}

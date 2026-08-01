@@ -24,6 +24,31 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { fetchAuthSession, getCurrentUser } from "aws-amplify/auth";
 import { FiltersState } from ".";
 
+type PropertyFilters = Partial<FiltersState> & {
+  favoriteIds?: number[];
+  page?: number;
+  limit?: number;
+};
+
+const propertyParams = (filters: PropertyFilters) =>
+  cleanParams({
+    location: filters.location,
+    priceMin: filters.priceRange?.[0],
+    priceMax: filters.priceRange?.[1],
+    beds: filters.beds,
+    baths: filters.baths,
+    propertyType: filters.propertyType,
+    squareFeetMin: filters.squareFeet?.[0],
+    squareFeetMax: filters.squareFeet?.[1],
+    amenities: filters.amenities?.join(","),
+    availableFrom: filters.availableFrom,
+    favoriteIds: filters.favoriteIds?.join(","),
+    latitude: filters.coordinates?.[1],
+    longitude: filters.coordinates?.[0],
+    page: filters.page,
+    limit: filters.limit,
+  });
+
 export const api = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
@@ -94,35 +119,11 @@ export const api = createApi({
     }),
 
     // property related endpoints
-    getProperties: build.query<
-      PropertyPage,
-      Partial<FiltersState> & {
-        favoriteIds?: number[];
-        page?: number;
-        limit?: number;
-      }
-    >({
-      query: (filters) => {
-        const params = cleanParams({
-          location: filters.location,
-          priceMin: filters.priceRange?.[0],
-          priceMax: filters.priceRange?.[1],
-          beds: filters.beds,
-          baths: filters.baths,
-          propertyType: filters.propertyType,
-          squareFeetMin: filters.squareFeet?.[0],
-          squareFeetMax: filters.squareFeet?.[1],
-          amenities: filters.amenities?.join(","),
-          availableFrom: filters.availableFrom,
-          favoriteIds: filters.favoriteIds?.join(","),
-          latitude: filters.coordinates?.[1],
-          longitude: filters.coordinates?.[0],
-          page: filters.page,
-          limit: filters.limit,
-        });
-
-        return { url: "properties", params };
-      },
+    getProperties: build.query<PropertyPage, PropertyFilters>({
+      query: (filters) => ({
+        url: "properties",
+        params: propertyParams(filters),
+      }),
       providesTags: (result) =>
         result
           ? [
@@ -140,29 +141,11 @@ export const api = createApi({
       },
     }),
 
-    getPropertyMarkers: build.query<
-      PropertyMarker[],
-      Partial<FiltersState> & { favoriteIds?: number[] }
-    >({
-      query: (filters) => {
-        const params = cleanParams({
-          location: filters.location,
-          priceMin: filters.priceRange?.[0],
-          priceMax: filters.priceRange?.[1],
-          beds: filters.beds,
-          baths: filters.baths,
-          propertyType: filters.propertyType,
-          squareFeetMin: filters.squareFeet?.[0],
-          squareFeetMax: filters.squareFeet?.[1],
-          amenities: filters.amenities?.join(","),
-          availableFrom: filters.availableFrom,
-          favoriteIds: filters.favoriteIds?.join(","),
-          latitude: filters.coordinates?.[1],
-          longitude: filters.coordinates?.[0],
-        });
-
-        return { url: "properties/markers", params };
-      },
+    getPropertyMarkers: build.query<PropertyMarker[], PropertyFilters>({
+      query: (filters) => ({
+        url: "properties/markers",
+        params: propertyParams(filters),
+      }),
       providesTags: [{ type: "Properties", id: "LIST" }],
     }),
 

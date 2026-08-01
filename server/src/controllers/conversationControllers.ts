@@ -17,6 +17,30 @@ const visibleTo = (userId: string) => ({
   OR: [{ senderCognitoId: { not: userId } }, { hiddenForSenderAt: null }],
 });
 
+const readConversationId = (
+  req: Request<{ id: string }>,
+  res: Response,
+): number | null => {
+  const conversationId = parseId(req.params.id);
+  if (conversationId !== null) return conversationId;
+  res.status(400).json({ message: "Invalid conversation id" });
+  return null;
+};
+
+const assertParticipant = async (
+  conversationId: number,
+  userId: string,
+  res: Response,
+): Promise<boolean> => {
+  const conversation = await prisma.conversation.findFirst({
+    where: { id: conversationId, ...asParticipant(userId) },
+    select: { id: true },
+  });
+  if (conversation) return true;
+  res.status(404).json({ message: "Conversation not found" });
+  return false;
+};
+
 type ReplyPreview = {
   id: number;
   senderCognitoId: string;
@@ -197,11 +221,9 @@ export const getMessages = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const conversationId = parseId(req.params.id);
-    if (conversationId === null) {
-      res.status(400).json({ message: "Invalid conversation id" });
-      return;
-    }
+    const conversationId = readConversationId(req, res);
+    if (conversationId === null) return;
+
     const userId = req.user!.id;
     const requested = parseNumber(req.query.limit);
     const limit =
@@ -209,14 +231,7 @@ export const getMessages = async (
         ? DEFAULT_MESSAGE_LIMIT
         : Math.min(Math.floor(requested), MAX_MESSAGE_LIMIT);
 
-    const conversation = await prisma.conversation.findFirst({
-      where: { id: conversationId, ...asParticipant(userId) },
-      select: { id: true },
-    });
-    if (!conversation) {
-      res.status(404).json({ message: "Conversation not found" });
-      return;
-    }
+    if (!(await assertParticipant(conversationId, userId, res))) return;
 
     await prisma.message.updateMany({
       where: { conversationId, senderCognitoId: { not: userId }, readAt: null },
@@ -247,11 +262,9 @@ export const sendMessage = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const conversationId = parseId(req.params.id);
-    if (conversationId === null) {
-      res.status(400).json({ message: "Invalid conversation id" });
-      return;
-    }
+    const conversationId = readConversationId(req, res);
+    if (conversationId === null) return;
+
     const userId = req.user!.id;
     const body = String(req.body.body ?? "").trim();
 
@@ -270,14 +283,7 @@ export const sendMessage = async (
       return;
     }
 
-    const conversation = await prisma.conversation.findFirst({
-      where: { id: conversationId, ...asParticipant(userId) },
-      select: { id: true },
-    });
-    if (!conversation) {
-      res.status(404).json({ message: "Conversation not found" });
-      return;
-    }
+    if (!(await assertParticipant(conversationId, userId, res))) return;
 
     if (replyToId !== null) {
       const parent = await prisma.message.findFirst({
@@ -331,14 +337,7 @@ export const editMessage = async (
 
     const userId = req.user!.id;
 
-    const conversation = await prisma.conversation.findFirst({
-      where: { id: conversationId, ...asParticipant(userId) },
-      select: { id: true },
-    });
-    if (!conversation) {
-      res.status(404).json({ message: "Conversation not found" });
-      return;
-    }
+    if (!(await assertParticipant(conversationId, userId, res))) return;
 
     const result = await prisma.message.updateMany({
       where: {
@@ -453,11 +452,9 @@ export const deleteConversation = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const conversationId = parseId(req.params.id);
-    if (conversationId === null) {
-      res.status(400).json({ message: "Invalid conversation id" });
-      return;
-    }
+    const conversationId = readConversationId(req, res);
+    if (conversationId === null) return;
+
     const userId = req.user!.id;
     const result = await prisma.conversation.deleteMany({
       where: { id: conversationId, ...asParticipant(userId) },
@@ -480,11 +477,8 @@ export const deleteMessages = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const conversationId = parseId(req.params.id);
-    if (conversationId === null) {
-      res.status(400).json({ message: "Invalid conversation id" });
-      return;
-    }
+    const conversationId = readConversationId(req, res);
+    if (conversationId === null) return;
 
     const { scope } = req.body;
     if (scope !== "me" && scope !== "everyone") {
@@ -515,15 +509,7 @@ export const deleteMessages = async (
     }
 
     const userId = req.user!.id;
-
-    const conversation = await prisma.conversation.findFirst({
-      where: { id: conversationId, ...asParticipant(userId) },
-      select: { id: true },
-    });
-    if (!conversation) {
-      res.status(404).json({ message: "Conversation not found" });
-      return;
-    }
+    if (!(await assertParticipant(conversationId, userId, res))) return;
 
     const result = await prisma.message.updateMany({
       where: {

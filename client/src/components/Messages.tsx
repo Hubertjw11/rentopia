@@ -48,6 +48,35 @@ const dayLabel = (iso: string) => {
   });
 };
 
+const ComposerNotice = ({
+  title,
+  body,
+  accent,
+  onCancel,
+  cancelLabel,
+}: {
+  title: string;
+  body: string;
+  accent: string;
+  onCancel: () => void;
+  cancelLabel: string;
+}) => (
+  <div className="flex items-start gap-2 border-t bg-primary-100 px-3 py-2">
+    <div className={`min-w-0 flex-1 border-l-2 pl-2 ${accent}`}>
+      <div className="text-[10px] font-semibold">{title}</div>
+      <div className="truncate text-xs text-gray-600">{body}</div>
+    </div>
+    <button
+      type="button"
+      onClick={onCancel}
+      aria-label={cancelLabel}
+      className="shrink-0 text-gray-500 hover:text-primary-700"
+    >
+      <X className="h-4 w-4" />
+    </button>
+  </div>
+);
+
 const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -675,48 +704,29 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
             )}
 
             {editing && showThread && (
-              <div className="flex items-start gap-2 border-t bg-primary-100 px-3 py-2">
-                <div className="min-w-0 flex-1 border-l-2 border-secondary-700 pl-2">
-                  <div className="text-[10px] font-semibold text-secondary-700">
-                    Editing message
-                  </div>
-                  <div className="truncate text-xs text-gray-600">
-                    {editing.body}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={cancelEdit}
-                  aria-label="Cancel edit"
-                  className="shrink-0 text-gray-500 hover:text-primary-700"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
+              <ComposerNotice
+                title="Editing message"
+                body={editing.body}
+                accent="border-secondary-700 text-secondary-700"
+                onCancel={cancelEdit}
+                cancelLabel="Cancel edit"
+              />
             )}
 
             {replyingTo && showThread && (
-              <div className="flex items-start gap-2 border-t bg-primary-100 px-3 py-2">
-                <div className="min-w-0 flex-1 border-l-2 border-primary-400 pl-2">
-                  <div className="text-[10px] font-semibold text-primary-700">
-                    Replying to{" "}
-                    {replyingTo.senderCognitoId === me ? "yourself" : otherName}
-                  </div>
-                  <div className="truncate text-xs text-gray-600">
-                    {replyingTo.isDeleted
-                      ? "This message was deleted"
-                      : replyingTo.body}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setReplyingTo(null)}
-                  aria-label="Cancel reply"
-                  className="shrink-0 text-gray-500 hover:text-primary-700"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
+              <ComposerNotice
+                title={`Replying to ${
+                  replyingTo.senderCognitoId === me ? "yourself" : otherName
+                }`}
+                body={
+                  replyingTo.isDeleted
+                    ? "This message was deleted"
+                    : replyingTo.body
+                }
+                accent="border-primary-400 text-primary-700"
+                onCancel={() => setReplyingTo(null)}
+                cancelLabel="Cancel reply"
+              />
             )}
 
             {showThread && (
