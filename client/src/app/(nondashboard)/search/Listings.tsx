@@ -9,7 +9,9 @@ import {
 } from "@/state/api";
 import { useAppSelector } from "@/state/redux";
 import { Property } from "@/types/model";
-import React from "react";
+import React, { useState } from "react";
+
+const PAGE_SIZE = 3;
 
 const Listings = () => {
   const { data: authUser } = useGetAuthUserQuery();
@@ -24,11 +26,23 @@ const Listings = () => {
   const viewMode = useAppSelector((state) => state.global.viewMode);
   const filters = useAppSelector((state) => state.global.filters);
 
-  const {
-    data: properties,
-    isLoading,
-    isError,
-  } = useGetPropertiesQuery(filters);
+  const [page, setPage] = useState(1);
+  const [pageFor, setPageFor] = useState("");
+
+  const filterKey = JSON.stringify(filters);
+  if (filterKey !== pageFor) {
+    setPageFor(filterKey);
+    setPage(1);
+  }
+
+  const { data, isLoading, isError } = useGetPropertiesQuery({
+    ...filters,
+    page,
+    limit: PAGE_SIZE,
+  });
+  const properties = data?.properties;
+  const total = data?.total ?? 0;
+  const lastPage = Math.max(Math.ceil(total / PAGE_SIZE), 1);
 
   const handleFavoriteToggle = async (propertyId: number) => {
     if (!authUser) return;
@@ -56,7 +70,7 @@ const Listings = () => {
   return (
     <div className="w-full">
       <h3 className="text-sm px-4 font-bold">
-        {properties.length}{" "}
+        {total}{" "}
         <span className="text-gray-700 font-normal">
           Places in {filters.location}
         </span>
@@ -91,6 +105,32 @@ const Listings = () => {
                 propertyLink={`/search/${property.id}`}
               />
             ),
+          )}
+
+          {total > PAGE_SIZE && (
+            <div className="flex items-center justify-between gap-3 pt-4">
+              <button
+                type="button"
+                onClick={() => setPage((current) => Math.max(current - 1, 1))}
+                disabled={page <= 1}
+                className="rounded-lg border px-3 py-1.5 text-sm disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <span className="text-xs text-gray-500">
+                Page {page} of {lastPage}
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  setPage((current) => Math.min(current + 1, lastPage))
+                }
+                disabled={page >= lastPage}
+                className="rounded-lg border px-3 py-1.5 text-sm disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
           )}
         </div>
       </div>

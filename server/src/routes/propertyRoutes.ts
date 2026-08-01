@@ -2,6 +2,7 @@ import express from "express";
 import {
   getProperties,
   getProperty,
+  getPropertyMarkers,
   createProperty,
 } from "../controllers/propertyControllers";
 import multer from "multer";
@@ -19,6 +20,7 @@ const upload = multer({ storage: storage });
 const router = express.Router();
 
 router.get("/", getProperties);
+router.get("/markers", getPropertyMarkers);
 router.get("/:id/leases", authMiddleware(["manager"]), getPropertyLeases);
 router.get("/:id/payments", authMiddleware(["manager"]), getPropertyPayments);
 router.get("/:id/reviews", listReviews);

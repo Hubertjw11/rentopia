@@ -57,6 +57,7 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
 
   const { data: conversations, isLoading } = useGetConversationsQuery();
   const selectedId = Number(searchParams.get("c")) || null;
+  const seekId = Number(searchParams.get("m")) || null;
 
   const [limit, setLimit] = useState(PAGE_SIZE);
   const { data: page, isFetching } = useGetMessagesQuery(
@@ -90,14 +91,27 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
   const olderFromRef = useRef<number | null>(null);
   const debounceRef = useRef<number | null>(null);
   const autoJumpedRef = useRef("");
-  const seekingIdRef = useRef<number | null>(null);
+  const handledSeekRef = useRef<number | null>(null);
 
+  const scrollToMessage = (id: number, flash = true) => {
+    const target = document.getElementById(`msg-${id}`);
+    if (!target) return false;
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (flash) {
+      target.classList.add("ring-2", "ring-secondary-500");
+      window.setTimeout(
+        () => target.classList.remove("ring-2", "ring-secondary-500"),
+        1200,
+      );
+    }
+    return true;
+  };
   if (selectedId !== draftFor) {
     setDraftFor(selectedId);
     setQuery("");
     setDebouncedQuery("");
     setSearchScope("thread");
-    setLimit(seekingIdRef.current !== null ? MAX_MESSAGES : PAGE_SIZE);
+    setLimit(seekId !== null ? MAX_MESSAGES : PAGE_SIZE);
     setSelectedIds([]);
     setReplyingTo(null);
     setPendingDelete(null);
@@ -180,21 +194,11 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
   useEffect(() => {
     const list = listRef.current;
     if (!list) return;
-
-    const seeking = seekingIdRef.current;
-    if (seeking !== null) {
-      seekingIdRef.current = null;
+    if (seekId !== null && handledSeekRef.current !== seekId) {
       olderFromRef.current = null;
-      const target = document.getElementById(`msg-${seeking}`);
-      if (target) {
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
-        target.classList.add("ring-2", "ring-secondary-500");
-        window.setTimeout(
-          () => target.classList.remove("ring-2", "ring-secondary-500"),
-          1200,
-        );
-      }
-      return;
+      const found = scrollToMessage(seekId);
+      if (found || !isFetching) handledSeekRef.current = seekId;
+      if (found) return;
     }
 
     if (olderFromRef.current !== null) {
@@ -212,7 +216,7 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
       behavior: jumpedRef.current ? "smooth" : "auto",
     });
     jumpedRef.current = true;
-  }, [page]);
+  }, [page, seekId, isFetching]);
 
   const selected = conversations?.find(
     (c: Conversation) => c.id === selectedId,
@@ -261,26 +265,10 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     composerRef.current?.focus();
   };
 
-  const scrollToMessage = (id: number, flash = true) => {
-    const target = document.getElementById(`msg-${id}`);
-    if (!target) return false;
-    target.scrollIntoView({ behavior: "smooth", block: "center" });
-    if (flash) {
-      target.classList.add("ring-2", "ring-secondary-500");
-      window.setTimeout(
-        () => target.classList.remove("ring-2", "ring-secondary-500"),
-        1200,
-      );
-    }
-    return true;
-  };
-
   const jumpTo = (id: number) => {
     if (scrollToMessage(id)) return;
-    if (hasMore && limit < MAX_MESSAGES) {
-      seekingIdRef.current = id;
-      setLimit(MAX_MESSAGES);
-    }
+    router.push(`${pathname}?c=${selectedId}&m=${id}`, { scroll: false });
+    setLimit(MAX_MESSAGES);
   };
 
   const threadMatches = inThreadSearch ? (searchPage?.results ?? []) : [];
@@ -297,15 +285,13 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     scrollToMessage(hit.id, false);
   };
 
-  const openSearchHit = (hit: MessageSearchHit) => {
-    seekingIdRef.current = hit.id;
+    const openSearchHit = (hit: MessageSearchHit) => {
     setQuery("");
     setDebouncedQuery("");
-    if (hit.conversationId === selectedId) {
-      setLimit(MAX_MESSAGES);
-    } else {
-      router.push(`${pathname}?c=${hit.conversationId}`, { scroll: false });
-    }
+    setLimit(MAX_MESSAGES);
+    router.push(`${pathname}?c=${hit.conversationId}&m=${hit.id}`, {
+      scroll: false,
+    });
   };
 
   const handleSend = async (e: React.FormEvent) => {

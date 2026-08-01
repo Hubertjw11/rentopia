@@ -3,68 +3,74 @@ import React, { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useAppSelector } from "@/state/redux";
-import { useGetPropertiesQuery } from "@/state/api";
-import { Property } from "@/types/model";
+import { useGetPropertyMarkersQuery } from "@/state/api";
+import { PropertyMarker } from "@/types/model";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN as string;
 
 const Map = () => {
-  const mapContainerRef = useRef(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
+
   const filters = useAppSelector((state) => state.global.filters);
-  const {
-    data: properties,
-    isLoading,
-    isError,
-  } = useGetPropertiesQuery(filters);
+  const { data: markers, isLoading, isError } = useGetPropertyMarkersQuery(filters);
 
   useEffect(() => {
-    if (isLoading || isError || !properties) return;
+    if (mapRef.current || !mapContainerRef.current) return;
 
     const map = new mapboxgl.Map({
-      container: mapContainerRef.current!,
+      container: mapContainerRef.current,
       style: "mapbox://styles/hubertjw11/cmrufaqjn00d101sc1a96e286",
-      center: filters.coordinates || [-74.5, 40],
+      center: [-74.5, 40],
       zoom: 9,
     });
+    mapRef.current = map;
 
-    properties.forEach((property) => {
-      const marker = createPropertyMaker(property, map);
-      const markerElement = marker.getElement();
-      const path = markerElement.querySelector("path[fill='#3FB1CE']");
-      if (path) path.setAttribute("fill", "#000000");
-    });
+    const observer = new ResizeObserver(() => map.resize());
+    observer.observe(mapContainerRef.current);
 
-    const resizeMap = () => {
-      if (map) setTimeout(() => map.resize(), 700);
+    return () => {
+      observer.disconnect();
+      map.remove();
+      mapRef.current = null;
     };
-    resizeMap();
+  }, []);
 
-    return () => map.remove();
-  }, [isLoading, isError, properties, filters.coordinates]);
+  useEffect(() => {
+    if (!mapRef.current || !filters.coordinates) return;
+    mapRef.current.flyTo({ center: filters.coordinates, zoom: 9 });
+  }, [filters.coordinates]);
 
-  if (isLoading) return <>Loading...</>;
-  if (isError || !properties) return <div>Failed to fetch properties.</div>;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !markers) return;
+
+    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current = markers.map((marker) =>
+      createPropertyMarker(marker, map),
+    );
+  }, [markers]);
 
   return (
     <div className="basis-5/12 grow relative rounded-xl">
       <div
         className="map-container rounded-xl"
         ref={mapContainerRef}
-        style={{
-          height: "100%",
-          width: "100%",
-        }}
+        style={{ height: "100%", width: "100%" }}
       />
+      {(isLoading || isError) && (
+        <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/70 text-sm text-gray-600">
+          {isError ? "Failed to load map pins." : "Loading…"}
+        </div>
+      )}
     </div>
   );
 };
 
-const createPropertyMaker = (property: Property, map: mapboxgl.Map) => {
+const createPropertyMarker = (property: PropertyMarker, map: mapboxgl.Map) => {
   const marker = new mapboxgl.Marker()
-    .setLngLat([
-      property.location.coordinates.longitude,
-      property.location.coordinates.latitude,
-    ])
+    .setLngLat([property.longitude, property.latitude])
     .setPopup(
       new mapboxgl.Popup().setHTML(
         `
@@ -82,6 +88,10 @@ const createPropertyMaker = (property: Property, map: mapboxgl.Map) => {
       ),
     )
     .addTo(map);
+
+  const path = marker.getElement().querySelector("path[fill='#3FB1CE']");
+  if (path) path.setAttribute("fill", "#000000");
+
   return marker;
 };
 

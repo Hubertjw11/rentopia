@@ -4,10 +4,11 @@ import {
   Payment,
   PaymentMethod,
   Property,
+  PropertyPage,
+  PropertyMarker,
   Tenant,
   Lease,
   Application,
-  AppNotification,
   NotificationPage,
   LeaseWithTenant,
   ApplicationRow,
@@ -94,7 +95,53 @@ export const api = createApi({
 
     // property related endpoints
     getProperties: build.query<
-      Property[],
+      PropertyPage,
+      Partial<FiltersState> & {
+        favoriteIds?: number[];
+        page?: number;
+        limit?: number;
+      }
+    >({
+      query: (filters) => {
+        const params = cleanParams({
+          location: filters.location,
+          priceMin: filters.priceRange?.[0],
+          priceMax: filters.priceRange?.[1],
+          beds: filters.beds,
+          baths: filters.baths,
+          propertyType: filters.propertyType,
+          squareFeetMin: filters.squareFeet?.[0],
+          squareFeetMax: filters.squareFeet?.[1],
+          amenities: filters.amenities?.join(","),
+          availableFrom: filters.availableFrom,
+          favoriteIds: filters.favoriteIds?.join(","),
+          latitude: filters.coordinates?.[1],
+          longitude: filters.coordinates?.[0],
+          page: filters.page,
+          limit: filters.limit,
+        });
+
+        return { url: "properties", params };
+      },
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.properties.map(({ id }) => ({
+                type: "Properties" as const,
+                id,
+              })),
+              { type: "Properties", id: "LIST" },
+            ]
+          : [{ type: "Properties", id: "LIST" }],
+      async onQueryStarted(_, { queryFulfilled }) {
+        await withToast(queryFulfilled, {
+          error: "Failed to fetch properties.",
+        });
+      },
+    }),
+
+    getPropertyMarkers: build.query<
+      PropertyMarker[],
       Partial<FiltersState> & { favoriteIds?: number[] }
     >({
       query: (filters) => {
@@ -114,20 +161,9 @@ export const api = createApi({
           longitude: filters.coordinates?.[0],
         });
 
-        return { url: "properties", params };
+        return { url: "properties/markers", params };
       },
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.map(({ id }) => ({ type: "Properties" as const, id })),
-              { type: "Properties", id: "LIST" },
-            ]
-          : [{ type: "Properties", id: "LIST" }],
-      async onQueryStarted(_, { queryFulfilled }) {
-        await withToast(queryFulfilled, {
-          error: "Failed to fetch properties.",
-        });
-      },
+      providesTags: [{ type: "Properties", id: "LIST" }],
     }),
 
     getProperty: build.query<Property, number>({
@@ -648,6 +684,7 @@ export const {
   useUpdateTenantSettingsMutation,
   useUpdateManagerSettingsMutation,
   useGetPropertiesQuery,
+  useGetPropertyMarkersQuery,
   useGetPropertyQuery,
   useGetCurrentResidencesQuery,
   useGetManagerPropertiesQuery,

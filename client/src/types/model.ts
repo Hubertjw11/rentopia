@@ -135,6 +135,21 @@ export type NotificationPage = {
   hasMore: boolean;
 };
 
+export type PropertyPage = {
+  properties: Property[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export type PropertyMarker = {
+  id: number;
+  name: string;
+  pricePerMonth: number;
+  longitude: number;
+  latitude: number;
+};
+
 export type ReplyPreview = {
   id: number;
   senderCognitoId: string;

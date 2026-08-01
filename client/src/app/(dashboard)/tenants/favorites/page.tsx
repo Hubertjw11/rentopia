@@ -22,13 +22,18 @@ const Favorites = () => {
   const [removeFavorite] = useRemoveFavoritePropertyMutation();
 
   const {
-    data: favoriteProperties,
+    data,
     isLoading,
     error,
   } = useGetPropertiesQuery(
-    { favoriteIds: tenant?.favorites?.map((fav: { id: number }) => fav.id) },
+    {
+      favoriteIds: tenant?.favorites?.map((fav: { id: number }) => fav.id),
+      limit: 50,
+    },
     { skip: !tenant?.favorites || tenant?.favorites.length === 0 },
   );
+
+  const favoriteProperties = data?.properties;
 
   if (isLoading) return <Loading />;
   if (error) return <div>Error loading favorites</div>;
