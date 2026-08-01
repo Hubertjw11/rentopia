@@ -2,7 +2,15 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, MessageSquare, Send, Trash2, X } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  MessageSquare,
+  Send,
+  Trash2,
+  X,
+} from "lucide-react";
 import {
   useGetAuthUserQuery,
   useGetConversationsQuery,
@@ -10,13 +18,17 @@ import {
   useSendMessageMutation,
   useDeleteConversationMutation,
   useDeleteMessagesMutation,
+  useSearchMessagesQuery,
 } from "@/state/api";
-import { Conversation, Message } from "@/types/model";
+import { Conversation, Message, MessageSearchHit } from "@/types/model";
 import Loading from "./Loading";
 import MessageBubble from "./MessageBubble";
+import MessageSearchResults from "./MessageSearchResults";
 
 const PAGE_SIZE = 30;
 const MAX_MESSAGES = 300;
+const MIN_QUERY_LENGTH = 2;
+const SEARCH_DEBOUNCE_MS = 300;
 
 const dayKey = (iso: string) => new Date(iso).toDateString();
 
@@ -60,16 +72,32 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
 
   const [draft, setDraft] = useState("");
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [searchScope, setSearchScope] = useState<"thread" | "all">("thread");
+  const [matchIndex, setMatchIndex] = useState(0);
+  const [matchesFor, setMatchesFor] = useState("");
   const [draftFor, setDraftFor] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [pendingDelete, setPendingDelete] = useState<number[] | null>(null);
   const [threadDeleteFor, setThreadDeleteFor] = useState<number | null>(null);
 
+  const endRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLInputElement>(null);
+  const jumpedRef = useRef(false);
+  const lastIdRef = useRef<number | null>(null);
+  const olderFromRef = useRef<number | null>(null);
+  const debounceRef = useRef<number | null>(null);
+  const autoJumpedRef = useRef("");
+  const seekingIdRef = useRef<number | null>(null);
+
   if (selectedId !== draftFor) {
     setDraftFor(selectedId);
     setQuery("");
-    setLimit(PAGE_SIZE);
+    setDebouncedQuery("");
+    setSearchScope("thread");
+    setLimit(seekingIdRef.current !== null ? MAX_MESSAGES : PAGE_SIZE);
     setSelectedIds([]);
     setReplyingTo(null);
     setPendingDelete(null);
@@ -80,6 +108,42 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     );
   }
 
+  const isSearching = debouncedQuery.length >= MIN_QUERY_LENGTH;
+  const inThreadSearch = isSearching && searchScope === "thread";
+  const showThread = !isSearching || searchScope === "thread";
+
+  if (debouncedQuery !== matchesFor) {
+    setMatchesFor(debouncedQuery);
+    setMatchIndex(0);
+    if (debouncedQuery.length >= MIN_QUERY_LENGTH) setLimit(MAX_MESSAGES);
+  }
+  const { data: searchPage, isFetching: searchFetching } =
+    useSearchMessagesQuery(
+      {
+        q: debouncedQuery,
+        conversationId:
+          searchScope === "thread" && selectedId ? selectedId : undefined,
+      },
+      { skip: !isSearching },
+    );
+
+  const onQueryChange = (value: string) => {
+    setQuery(value);
+    if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      debounceRef.current = null;
+      setDebouncedQuery(value.trim());
+    }, SEARCH_DEBOUNCE_MS);
+  };
+
+  useEffect(
+    () => () => {
+      if (debounceRef.current !== null)
+        window.clearTimeout(debounceRef.current);
+    },
+    [],
+  );
+
   const updateDraft = (value: string) => {
     setDraft(value);
     if (typeof window === "undefined" || !selectedId) return;
@@ -87,14 +151,6 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     if (value) window.localStorage.setItem(key, value);
     else window.localStorage.removeItem(key);
   };
-
-  const endRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-  const composerRef = useRef<HTMLInputElement>(null);
-  const jumpedRef = useRef(false);
-  const lastIdRef = useRef<number | null>(null);
-  const olderFromRef = useRef<number | null>(null);
-  const seekingIdRef = useRef<number | null>(null);
 
   const [snapshotFor, setSnapshotFor] = useState<number | null>(null);
   const [unreadAtOpen, setUnreadAtOpen] = useState(0);
@@ -110,6 +166,16 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     jumpedRef.current = false;
     lastIdRef.current = null;
   }, [selectedId]);
+
+  useEffect(() => {
+    if (!inThreadSearch) return;
+    const hits = searchPage?.results ?? [];
+    if (!hits.length) return;
+
+    const key = `${debouncedQuery}:${hits[0].id}`;
+    if (autoJumpedRef.current === key) return;
+    if (scrollToMessage(hits[0].id, false)) autoJumpedRef.current = key;
+  });
 
   useEffect(() => {
     const list = listRef.current;
@@ -166,11 +232,6 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     setLimit((current) => Math.min(current + PAGE_SIZE, MAX_MESSAGES));
   };
 
-  const trimmedQuery = query.trim().toLowerCase();
-  const visible = trimmedQuery
-    ? items.filter((m: Message) => m.body.toLowerCase().includes(trimmedQuery))
-    : items;
-
   const firstUnreadIndex = (() => {
     if (unreadAtOpen <= 0) return -1;
     let remaining = unreadAtOpen;
@@ -191,27 +252,59 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     );
 
   const startSelection = (id: number) =>
-    setSelectedIds((current) => (current.includes(id) ? current : [...current, id]));
+    setSelectedIds((current) =>
+      current.includes(id) ? current : [...current, id],
+    );
 
   const handleReply = (message: Message) => {
     setReplyingTo(message);
     composerRef.current?.focus();
   };
 
-  const jumpTo = (id: number) => {
+  const scrollToMessage = (id: number, flash = true) => {
     const target = document.getElementById(`msg-${id}`);
-    if (target) {
-      target.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!target) return false;
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (flash) {
       target.classList.add("ring-2", "ring-secondary-500");
       window.setTimeout(
         () => target.classList.remove("ring-2", "ring-secondary-500"),
         1200,
       );
-      return;
     }
+    return true;
+  };
+
+  const jumpTo = (id: number) => {
+    if (scrollToMessage(id)) return;
     if (hasMore && limit < MAX_MESSAGES) {
       seekingIdRef.current = id;
       setLimit(MAX_MESSAGES);
+    }
+  };
+
+  const threadMatches = inThreadSearch ? (searchPage?.results ?? []) : [];
+  const safeMatchIndex = Math.min(
+    matchIndex,
+    Math.max(threadMatches.length - 1, 0),
+  );
+  const currentMatchId = threadMatches[safeMatchIndex]?.id ?? null;
+
+  const goToMatch = (index: number) => {
+    const hit = threadMatches[index];
+    if (!hit) return;
+    setMatchIndex(index);
+    scrollToMessage(hit.id, false);
+  };
+
+  const openSearchHit = (hit: MessageSearchHit) => {
+    seekingIdRef.current = hit.id;
+    setQuery("");
+    setDebouncedQuery("");
+    if (hit.conversationId === selectedId) {
+      setLimit(MAX_MESSAGES);
+    } else {
+      router.push(`${pathname}?c=${hit.conversationId}`, { scroll: false });
     }
   };
 
@@ -224,7 +317,11 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     updateDraft("");
     setReplyingTo(null);
     try {
-      await sendMessage({ conversationId: selectedId, body, replyToId }).unwrap();
+      await sendMessage({
+        conversationId: selectedId,
+        body,
+        replyToId,
+      }).unwrap();
     } catch {
       updateDraft(body);
     }
@@ -322,7 +419,9 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
             <div className="absolute right-1 top-2">
               {threadDeleteFor === c.id ? (
                 <div className="flex items-center gap-1 rounded-md bg-white px-2 py-1 shadow">
-                  <span className="text-[10px] text-gray-500">Delete both?</span>
+                  <span className="text-[10px] text-gray-500">
+                    Delete both?
+                  </span>
                   <button
                     type="button"
                     onClick={() => handleDeleteThread(c.id)}
@@ -415,83 +514,146 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
                     {selected?.property.name}
                   </div>
                 </div>
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search…"
-                  className="ml-auto w-28 md:w-40 border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary-400"
-                />
+                <div className="ml-auto flex items-center gap-1">
+                  <input
+                    value={query}
+                    onChange={(e) => onQueryChange(e.target.value)}
+                    placeholder="Search…"
+                    className="w-28 md:w-40 border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary-400"
+                  />
+                  {query && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuery("");
+                        setDebouncedQuery("");
+                      }}
+                      aria-label="Clear search"
+                      className="text-gray-400 hover:text-primary-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
-            <div
-              ref={listRef}
-              className="flex-1 overflow-y-auto px-5 py-4 space-y-3"
-            >
-              {hasMore && limit < MAX_MESSAGES && (
-                <div className="flex justify-center">
-                  <button
-                    type="button"
-                    onClick={loadOlder}
-                    disabled={loadingOlder}
-                    className="text-xs font-medium text-primary-700 hover:underline disabled:opacity-50"
-                  >
-                    {loadingOlder ? "Loading…" : "Load older messages"}
-                  </button>
-                </div>
-              )}
-              {hasMore && limit >= MAX_MESSAGES && (
-                <p className="text-center text-[10px] text-gray-400">
-                  Showing the most recent {MAX_MESSAGES} messages.
-                </p>
-              )}
-              {trimmedQuery && visible.length === 0 && (
-                <p className="text-center text-sm text-gray-500 py-6">
-                  No messages match “{query}”
-                </p>
-              )}
-              {visible.map((m: Message, i: number) => {
-                const prev = i > 0 ? visible[i - 1] : null;
-                const showDay =
-                  !trimmedQuery &&
-                  (!prev || dayKey(prev.createdAt) !== dayKey(m.createdAt));
-                return (
-                  <React.Fragment key={m.id}>
-                    {showDay && (
-                      <div className="flex justify-center">
-                        <span className="text-[10px] font-medium text-gray-500 bg-primary-100 rounded-full px-3 py-1">
-                          {dayLabel(m.createdAt)}
-                        </span>
-                      </div>
-                    )}
+            {inThreadSearch && (
+              <div className="flex items-center gap-2 border-b bg-primary-100 px-5 py-1.5 text-[11px]">
+                <span className="text-gray-600">
+                  {searchFetching
+                    ? "Searching…"
+                    : threadMatches.length === 0
+                      ? "No matches"
+                      : `${safeMatchIndex + 1} of ${threadMatches.length}`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => goToMatch(safeMatchIndex + 1)}
+                  disabled={safeMatchIndex + 1 >= threadMatches.length}
+                  aria-label="Older match"
+                  className="text-primary-700 disabled:opacity-30"
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => goToMatch(safeMatchIndex - 1)}
+                  disabled={safeMatchIndex <= 0}
+                  aria-label="Newer match"
+                  className="text-primary-700 disabled:opacity-30"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSearchScope("all")}
+                  className="ml-auto font-medium text-primary-700 hover:underline"
+                >
+                  Search all conversations
+                </button>
+              </div>
+            )}
 
-                    {!trimmedQuery && i === firstUnreadIndex && (
-                      <div className="flex items-center gap-2 text-[10px] font-semibold text-secondary-700">
-                        <span className="h-px flex-1 bg-secondary-700/40" />
-                        {unreadAtOpen} unread{" "}
-                        {unreadAtOpen === 1 ? "message" : "messages"}
-                        <span className="h-px flex-1 bg-secondary-700/40" />
-                      </div>
-                    )}
+            {!showThread ? (
+              <MessageSearchResults
+                term={debouncedQuery}
+                onBackToThread={() => setSearchScope("thread")}
+                results={searchPage?.results ?? []}
+                hasMore={searchPage?.hasMore ?? false}
+                isSearching={searchFetching}
+                me={me}
+                userType={userType}
+                onOpen={openSearchHit}
+              />
+            ) : (
+              <div
+                ref={listRef}
+                className="flex-1 overflow-y-auto px-5 py-4 space-y-3"
+              >
+                {hasMore && limit < MAX_MESSAGES && (
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      onClick={loadOlder}
+                      disabled={loadingOlder}
+                      className="text-xs font-medium text-primary-700 hover:underline disabled:opacity-50"
+                    >
+                      {loadingOlder ? "Loading…" : "Load older messages"}
+                    </button>
+                  </div>
+                )}
+                {hasMore && limit >= MAX_MESSAGES && (
+                  <p className="text-center text-[10px] text-gray-400">
+                    Showing the most recent {MAX_MESSAGES} messages.
+                  </p>
+                )}
+                {items.map((m: Message, i: number) => {
+                  const prev = i > 0 ? items[i - 1] : null;
+                  const showDay =
+                    !prev || dayKey(prev.createdAt) !== dayKey(m.createdAt);
+                  return (
+                    <React.Fragment key={m.id}>
+                      {showDay && (
+                        <div className="flex justify-center">
+                          <span className="text-[10px] font-medium text-gray-500 bg-primary-100 rounded-full px-3 py-1">
+                            {dayLabel(m.createdAt)}
+                          </span>
+                        </div>
+                      )}
 
-                    <MessageBubble
-                      message={m}
-                      mine={m.senderCognitoId === me}
-                      selectionMode={selectionMode}
-                      isSelected={selectedIds.includes(m.id)}
-                      onToggleSelect={toggleSelect}
-                      onStartSelection={startSelection}
-                      onReply={handleReply}
-                      onDelete={setPendingDelete}
-                      onJumpTo={jumpTo}
-                    />
-                  </React.Fragment>
-                );
-              })}
-              <div ref={endRef} />
-            </div>
+                      {i === firstUnreadIndex && (
+                        <div className="flex items-center gap-2 text-[10px] font-semibold text-secondary-700">
+                          <span className="h-px flex-1 bg-secondary-700/40" />
+                          {unreadAtOpen} unread{" "}
+                          {unreadAtOpen === 1 ? "message" : "messages"}
+                          <span className="h-px flex-1 bg-secondary-700/40" />
+                        </div>
+                      )}
 
-            {replyingTo && (
+                      <MessageBubble
+                        message={m}
+                        mine={m.senderCognitoId === me}
+                        selectionMode={selectionMode}
+                        isSelected={selectedIds.includes(m.id)}
+                        onToggleSelect={toggleSelect}
+                        onStartSelection={startSelection}
+                        onReply={handleReply}
+                        onDelete={setPendingDelete}
+                        onJumpTo={jumpTo}
+                        searchTerm={inThreadSearch ? debouncedQuery : undefined}
+                        isCurrentMatch={
+                          inThreadSearch && m.id === currentMatchId
+                        }
+                      />
+                    </React.Fragment>
+                  );
+                })}
+                <div ref={endRef} />
+              </div>
+            )}
+
+            {replyingTo && showThread && (
               <div className="flex items-start gap-2 border-t bg-primary-100 px-3 py-2">
                 <div className="min-w-0 flex-1 border-l-2 border-primary-400 pl-2">
                   <div className="text-[10px] font-semibold text-primary-700">
@@ -519,22 +681,24 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
               </div>
             )}
 
-            <form onSubmit={handleSend} className="border-t p-3 flex gap-2">
-              <input
-                ref={composerRef}
-                value={draft}
-                onChange={(e) => updateDraft(e.target.value)}
-                placeholder="Write a message…"
-                className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-400"
-              />
-              <button
-                type="submit"
-                disabled={sending || !draft.trim()}
-                className="bg-primary-700 text-white rounded-lg px-4 flex items-center disabled:opacity-50"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </form>
+            {showThread && (
+              <form onSubmit={handleSend} className="border-t p-3 flex gap-2">
+                <input
+                  ref={composerRef}
+                  value={draft}
+                  onChange={(e) => updateDraft(e.target.value)}
+                  placeholder="Write a message…"
+                  className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-400"
+                />
+                <button
+                  type="submit"
+                  disabled={sending || !draft.trim()}
+                  className="bg-primary-700 text-white rounded-lg px-4 flex items-center disabled:opacity-50"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </form>
+            )}
 
             {pendingDelete && (
               <div className="absolute inset-0 z-10 flex items-end justify-center bg-black/20 p-4">

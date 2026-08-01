@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Message } from "@/types/model";
+import Highlight from "./Highlight";
 
 const timeLabel = (iso: string) =>
   new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -26,6 +27,8 @@ type MessageBubbleProps = {
   onReply: (message: Message) => void;
   onDelete: (ids: number[]) => void;
   onJumpTo: (id: number) => void;
+  searchTerm?: string;
+  isCurrentMatch?: boolean;
 };
 
 const MessageBubble = ({
@@ -38,6 +41,8 @@ const MessageBubble = ({
   onReply,
   onDelete,
   onJumpTo,
+  searchTerm,
+  isCurrentMatch = false,
 }: MessageBubbleProps) => {
   const pressTimer = useRef<number | null>(null);
   const suppressClickRef = useRef(false);
@@ -134,7 +139,9 @@ const MessageBubble = ({
       id={`msg-${message.id}`}
       className={`group flex items-start gap-2 rounded-2xl ${
         mine ? "justify-end" : "justify-start"
-      } ${isSelected ? "bg-secondary-100" : ""}`}
+      } ${isSelected ? "bg-secondary-100" : ""} ${
+        isCurrentMatch ? "ring-2 ring-secondary-500" : ""
+      }`}
     >
       {selectionMode && mine && (
         <input
@@ -195,7 +202,7 @@ const MessageBubble = ({
           </div>
         ) : (
           <div className="text-sm whitespace-pre-wrap wrap-break-word">
-            {message.body}
+            <Highlight text={message.body} term={searchTerm ?? ""} />
           </div>
         )}
 

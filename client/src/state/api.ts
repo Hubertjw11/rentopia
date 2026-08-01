@@ -15,6 +15,7 @@ import {
   ConversationRow,
   Message,
   MessagePage,
+  MessageSearchPage,
   ReviewRow,
   Review,
 } from "@/types/model";
@@ -488,7 +489,7 @@ export const api = createApi({
         try {
           await queryFulfilled;
         } catch {
-          return; 
+          return;
         }
         dispatch(api.util.invalidateTags(["Conversations"]));
       },
@@ -520,6 +521,17 @@ export const api = createApi({
       async onQueryStarted(_, { queryFulfilled }) {
         await withToast(queryFulfilled, { error: "Message failed to send." });
       },
+    }),
+
+    searchMessages: build.query<
+      MessageSearchPage,
+      { q: string; conversationId?: number }
+    >({
+      query: ({ q, conversationId }) => ({
+        url: "conversations/search",
+        params: conversationId === undefined ? { q } : { q, conversationId },
+      }),
+      providesTags: ["Messages"],
     }),
 
     deleteMessages: build.mutation<
@@ -667,6 +679,7 @@ export const {
   useSendMessageMutation,
   useDeleteConversationMutation,
   useDeleteMessagesMutation,
+  useSearchMessagesQuery,
   useGetReviewsQuery,
   useUpsertReviewMutation,
   useDeleteReviewMutation,

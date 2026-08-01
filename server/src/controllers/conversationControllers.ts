@@ -3,6 +3,11 @@ import { prisma } from "../lib/prisma";
 import { parseId, parseNumber } from "../lib/params";
 
 const MAX_DELETE_BATCH = 100;
+const DEFAULT_SEARCH_LIMIT = 30;
+const MAX_SEARCH_LIMIT = 100;
+const MIN_QUERY_LENGTH = 2;
+const DEFAULT_MESSAGE_LIMIT = 30;
+const MAX_MESSAGE_LIMIT = 300;
 
 const asParticipant = (userId: string) => ({
   OR: [{ tenantCognitoId: userId }, { managerCognitoId: userId }],
@@ -53,9 +58,6 @@ const replyInclude = {
     select: { id: true, senderCognitoId: true, body: true, deletedAt: true },
   },
 } as const;
-
-const DEFAULT_MESSAGE_LIMIT = 30;
-const MAX_MESSAGE_LIMIT = 300;
 
 export const listConversations = async (
   req: Request,
@@ -308,6 +310,83 @@ export const sendMessage = async (
   }
 };
 
+export const searchMessages = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+
+    if (q.length < MIN_QUERY_LENGTH) {
+      res.json({ results: [], hasMore: false });
+      return;
+    }
+
+    const requested = parseNumber(req.query.limit);
+    const limit =
+      requested === null || requested <= 0
+        ? DEFAULT_SEARCH_LIMIT
+        : Math.min(Math.floor(requested), MAX_SEARCH_LIMIT);
+
+    const conversationId =
+      req.query.conversationId === undefined
+        ? null
+        : parseId(req.query.conversationId);
+    if (req.query.conversationId !== undefined && conversationId === null) {
+      res.status(400).json({ message: "Invalid conversationId" });
+      return;
+    }
+
+    const window = await prisma.message.findMany({
+      where: {
+        conversation: {
+          ...asParticipant(userId),
+          ...(conversationId !== null ? { id: conversationId } : {}),
+        },
+        deletedAt: null,
+        ...visibleTo(userId),
+        body: { contains: q, mode: "insensitive" },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: limit + 1,
+      include: {
+        conversation: {
+          select: {
+            id: true,
+            property: { select: { name: true } },
+            tenant: { select: { name: true } },
+            manager: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    const hasMore = window.length > limit;
+    const rows = hasMore ? window.slice(0, limit) : window;
+
+    res.json({
+      results: rows.map((m) => ({
+        id: m.id,
+        conversationId: m.conversationId,
+        senderCognitoId: m.senderCognitoId,
+        body: m.body,
+        createdAt: m.createdAt,
+        conversation: {
+          id: m.conversation.id,
+          propertyName: m.conversation.property.name,
+          tenantName: m.conversation.tenant.name,
+          managerName: m.conversation.manager.name,
+        },
+      })),
+      hasMore,
+    });
+  } catch (error) {
+    console.error("Error searching messages:", error);
+    res.status(500).json({ message: "Error searching messages" });
+  }
+};
+
 export const deleteConversation = async (
   req: Request<{ id: string }>,
   res: Response,
@@ -385,9 +464,6 @@ export const deleteMessages = async (
       return;
     }
 
-    // Ownership is part of the query: senderCognitoId scopes this to your own
-    // messages for both scopes, so someone else's message can never be touched
-    // even if its id is passed deliberately.
     const result = await prisma.message.updateMany({
       where: {
         id: { in: ids },

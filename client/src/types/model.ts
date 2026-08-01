@@ -142,6 +142,25 @@ export type ReplyPreview = {
   isDeleted: boolean;
 };
 
+export type MessageSearchHit = {
+  id: number;
+  conversationId: number;
+  senderCognitoId: string;
+  body: string;
+  createdAt: string;
+  conversation: {
+    id: number;
+    propertyName: string;
+    tenantName: string;
+    managerName: string;
+  };
+};
+
+export type MessageSearchPage = {
+  results: MessageSearchHit[];
+  hasMore: boolean;
+};
+
 export type Message = {
   id: number;
   conversationId: number;
