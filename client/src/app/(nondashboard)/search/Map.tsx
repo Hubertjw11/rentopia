@@ -14,7 +14,11 @@ const Map = () => {
   const markersRef = useRef<mapboxgl.Marker[]>([]);
 
   const filters = useAppSelector((state) => state.global.filters);
-  const { data: markers, isLoading, isError } = useGetPropertyMarkersQuery(filters);
+  const {
+    data: markers,
+    isLoading,
+    isError,
+  } = useGetPropertyMarkersQuery(filters);
 
   useEffect(() => {
     if (mapRef.current || !mapContainerRef.current) return;
@@ -53,7 +57,7 @@ const Map = () => {
   }, [markers]);
 
   return (
-    <div className="basis-5/12 grow relative rounded-xl">
+    <div className="relative h-full w-full rounded-xl">
       <div
         className="map-container rounded-xl"
         ref={mapContainerRef}

@@ -105,14 +105,14 @@ const FiltersBar = () => {
   };
 
   return (
-    <div className="flex justify-between items-center w-full py-5">
+    <div className="flex w-full items-center gap-2 py-5">
       {/* Filters */}
-      <div className="flex justify-between items-center gap-4 p-2">
+      <div className="flex min-w-0 flex-1 items-center gap-4 overflow-x-auto p-2">
         {/* All Filters */}
         <Button
           variant="outline"
           className={cn(
-            "gap-2 rounded-xl border-primary-400 hover:bg-primary-500 hover:text-primary-100",
+            "shrink-0 gap-2 rounded-xl border-primary-400 hover:bg-primary-500 hover:text-primary-100",
             isFiltersFullOpen && "bg-primary-700 text-primary-100",
           )}
           onClick={() => dispatch(toggleFiltersFullOpen())}
@@ -122,7 +122,7 @@ const FiltersBar = () => {
         </Button>
 
         {/* Search Location */}
-        <div className="flex items-center">
+        <div className="flex shrink-0 items-center">
           <Input
             placeholder="Search Location"
             value={searchInput}
@@ -139,7 +139,7 @@ const FiltersBar = () => {
         </div>
 
         {/* Price Range */}
-        <div className="flex gap-1">
+        <div className="flex shrink-0 gap-1">
           {/* Minimum Price Selector */}
           <Select
             value={filters.priceRange[0]?.toString() || "any"}
@@ -186,7 +186,7 @@ const FiltersBar = () => {
         </div>
 
         {/* Beds and Baths */}
-        <div className="flex gap-1">
+        <div className="flex shrink-0 gap-1">
           {/* Beds */}
           <Select
             value={filters.beds}
@@ -247,7 +247,7 @@ const FiltersBar = () => {
             ),
           }}
         >
-          <SelectTrigger className="w-32 rounded-xl border-primary-400">
+          <SelectTrigger className="w-32 shrink-0 rounded-xl border-primary-400">
             <SelectValue placeholder="Home Type" />
           </SelectTrigger>
           <SelectContent className="bg-white">
@@ -264,7 +264,7 @@ const FiltersBar = () => {
         </Select>
       </div>
       {/* View Mode */}
-      <div className="flex justify-between items-center gap-4 p-2">
+      <div className="flex shrink-0 items-center p-2">
         <div className="flex border rounded-xl">
           <Button
             variant="ghost"
