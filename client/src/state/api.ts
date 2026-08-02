@@ -529,13 +529,25 @@ export const api = createApi({
 
     sendMessage: build.mutation<
       Message,
-      { conversationId: number; body: string; replyToId?: number }
+      {
+        conversationId: number;
+        body: string;
+        replyToId?: number;
+        attachment?: File;
+      }
     >({
-      query: ({ conversationId, ...body }) => ({
-        url: `conversations/${conversationId}/messages`,
-        method: "POST",
-        body,
-      }),
+      query: ({ conversationId, body, replyToId, attachment }) => {
+        const url = `conversations/${conversationId}/messages`;
+        if (!attachment) {
+          return { url, method: "POST", body: { body, replyToId } };
+        }
+
+        const form = new FormData();
+        form.append("body", body);
+        if (replyToId !== undefined) form.append("replyToId", String(replyToId));
+        form.append("attachment", attachment);
+        return { url, method: "POST", body: form };
+      },
       invalidatesTags: ["Messages", "Conversations"],
       async onQueryStarted(_, { queryFulfilled }) {
         await withToast(queryFulfilled, { error: "Message failed to send." });

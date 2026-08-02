@@ -150,11 +150,18 @@ export type PropertyMarker = {
   latitude: number;
 };
 
+export type MessageAttachment = {
+  url: string;
+  type: string;
+  name: string;
+};
+
 export type ReplyPreview = {
   id: number;
   senderCognitoId: string;
   body: string;
   isDeleted: boolean;
+  attachment: { url: string; type: string } | null;
 };
 
 export type MessageSearchHit = {
@@ -185,6 +192,7 @@ export type Message = {
   createdAt: string;
   isDeleted: boolean;
   isEdited: boolean;
+  attachment: MessageAttachment | null;
   replyTo: ReplyPreview | null;
 };
 

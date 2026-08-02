@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from "express";
+import { MulterError } from "multer";
 
 export const errorHandler = (
   err: unknown,
@@ -8,6 +9,17 @@ export const errorHandler = (
 ): void => {
   if (res.headersSent) {
     next(err);
+    return;
+  }
+
+  if (err instanceof MulterError) {
+    console.error("Upload rejected:", err.code);
+    res.status(400).json({
+      message:
+        err.code === "LIMIT_FILE_SIZE"
+          ? "That file is too large"
+          : "That upload was not accepted",
+    });
     return;
   }
 

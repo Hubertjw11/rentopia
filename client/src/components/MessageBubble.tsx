@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import { CheckCheck, MoreHorizontal } from "lucide-react";
+import Image from "next/image";
+import { Camera, CheckCheck, FileText, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -28,6 +29,7 @@ type MessageBubbleProps = {
   onDelete: (ids: number[]) => void;
   onJumpTo: (id: number) => void;
   onEdit: (message: Message) => void;
+  onOpenImage: (message: Message) => void;
   me?: string;
   otherName: string;
   searchTerm?: string;
@@ -45,6 +47,7 @@ const MessageBubble = ({
   onDelete,
   onJumpTo,
   onEdit,
+  onOpenImage,
   me,
   otherName,
   searchTerm,
@@ -189,22 +192,80 @@ const MessageBubble = ({
               e.stopPropagation();
               onJumpTo(message.replyTo!.id);
             }}
-            className={`mb-1 block w-full rounded-lg border-l-2 px-2 py-1 text-left text-xs ${
+            className={`mb-1 flex w-full items-center gap-2 rounded-lg border-l-2 px-2 py-1 text-left text-xs ${
               mine
                 ? "border-primary-300 bg-primary-800/40 text-primary-200"
                 : "border-primary-400 bg-white/60 text-gray-600"
             }`}
           >
-            <span className="block font-semibold">
-              {message.replyTo.senderCognitoId === me ? "You" : otherName}
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold">
+                {message.replyTo.senderCognitoId === me ? "You" : otherName}
+              </span>
+              <span className="flex items-center gap-1 truncate">
+                {message.replyTo.attachment &&
+                  (message.replyTo.attachment.type.startsWith("image/") ? (
+                    <Camera className="h-3 w-3 shrink-0" />
+                  ) : (
+                    <FileText className="h-3 w-3 shrink-0" />
+                  ))}
+                {message.replyTo.isDeleted
+                  ? "This message was deleted"
+                  : message.replyTo.body ||
+                    (message.replyTo.attachment?.type.startsWith("image/")
+                      ? "Photo"
+                      : message.replyTo.attachment
+                        ? "Document"
+                        : "")}
+              </span>
             </span>
-            <span className="block truncate">
-              {message.replyTo.isDeleted
-                ? "This message was deleted"
-                : message.replyTo.body}
-            </span>
+            {message.replyTo.attachment?.type.startsWith("image/") && (
+              <Image
+                src={message.replyTo.attachment.url}
+                alt=""
+                width={40}
+                height={40}
+                className="h-10 w-10 shrink-0 rounded object-cover"
+              />
+            )}
           </button>
         )}
+
+                {message.attachment &&
+          (message.attachment.type.startsWith("image/") ? (
+            <button
+              type="button"
+              // Images open the in-app viewer; only documents leave the app.
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenImage(message);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="mb-1 block"
+            >
+              <Image
+                src={message.attachment.url}
+                alt={message.attachment.name}
+                width={480}
+                height={480}
+                className="h-auto max-h-64 w-auto rounded-lg"
+              />
+            </button>
+          ) : (
+            <a
+              href={message.attachment.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              className={`mb-1 flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs underline ${
+                mine ? "bg-primary-800/40" : "bg-white/60"
+              }`}
+            >
+              <FileText className="h-4 w-4 shrink-0" />
+              <span className="truncate">{message.attachment.name}</span>
+            </a>
+          ))}
 
         {message.isDeleted ? (
           <div
@@ -213,9 +274,11 @@ const MessageBubble = ({
             {mine ? "You deleted this message" : "This message was deleted"}
           </div>
         ) : (
-          <div className="text-sm whitespace-pre-wrap wrap-break-word">
-            <Highlight text={message.body} term={searchTerm ?? ""} />
-          </div>
+          message.body && (
+            <div className="text-sm whitespace-pre-wrap wrap-break-word">
+              <Highlight text={message.body} term={searchTerm ?? ""} />
+            </div>
+          )
         )}
 
         <div

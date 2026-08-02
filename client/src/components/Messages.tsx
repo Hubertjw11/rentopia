@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronUp,
   MessageSquare,
+  Paperclip,
   Send,
   Trash2,
   X,
@@ -25,6 +26,7 @@ import { Conversation, Message, MessageSearchHit } from "@/types/model";
 import Loading from "./Loading";
 import MessageBubble from "./MessageBubble";
 import MessageSearchResults from "./MessageSearchResults";
+import ImageViewer from "./ImageViewer";
 
 const PAGE_SIZE = 30;
 const MAX_MESSAGES = 300;
@@ -113,12 +115,15 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [editing, setEditing] = useState<Message | null>(null);
   const [stashedDraft, setStashedDraft] = useState("");
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [viewing, setViewing] = useState<Message | null>(null);
   const [pendingDelete, setPendingDelete] = useState<number[] | null>(null);
   const [threadDeleteFor, setThreadDeleteFor] = useState<number | null>(null);
 
   const endRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const jumpedRef = useRef(false);
   const lastIdRef = useRef<number | null>(null);
   const olderFromRef = useRef<number | null>(null);
@@ -148,6 +153,8 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     setSelectedIds([]);
     setReplyingTo(null);
     setEditing(null);
+    setAttachment(null);
+    setViewing(null);
     setPendingDelete(null);
     setDraft(
       typeof window !== "undefined" && selectedId
@@ -350,7 +357,7 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     const body = draft.trim();
-    if (!body || !selectedId) return;
+    if ((!body && !attachment) || !selectedId) return;
 
     if (editing) {
       try {
@@ -365,17 +372,21 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
     }
 
     const replyToId = replyingTo?.id;
+    const file = attachment;
     setDraft("");
     updateDraft("");
     setReplyingTo(null);
+    setAttachment(null);
     try {
       await sendMessage({
         conversationId: selectedId,
         body,
         replyToId,
+        attachment: file ?? undefined,
       }).unwrap();
     } catch {
       updateDraft(body);
+      setAttachment(file);
     }
   };
 
@@ -423,7 +434,7 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden flex h-128">
+    <div className="bg-white rounded-xl shadow-md overflow-hidden flex h-[80vh]">
       {/* Thread list */}
       <div
         className={`w-full md:w-72 shrink-0 border-r overflow-y-auto ${
@@ -463,7 +474,7 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
                   )}
                   {c.lastMessage.isDeleted
                     ? "This message was deleted"
-                    : c.lastMessage.body}
+                    : c.lastMessage.body || "Attachment"}
                 </div>
               )}
             </button>
@@ -689,6 +700,7 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
                         onDelete={setPendingDelete}
                         onJumpTo={jumpTo}
                         onEdit={startEdit}
+                        onOpenImage={setViewing}
                         me={me}
                         otherName={otherName}
                         searchTerm={inThreadSearch ? debouncedQuery : undefined}
@@ -713,6 +725,16 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
               />
             )}
 
+            {attachment && showThread && !editing && (
+              <ComposerNotice
+                title="Attachment"
+                body={`${attachment.name} · ${(attachment.size / 1024 / 1024).toFixed(2)} MB`}
+                accent="border-primary-400 text-primary-700"
+                onCancel={() => setAttachment(null)}
+                cancelLabel="Remove attachment"
+              />
+            )}
+
             {replyingTo && showThread && (
               <ComposerNotice
                 title={`Replying to ${
@@ -732,6 +754,28 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
             {showThread && (
               <form onSubmit={handleSend} className="border-t p-3 flex gap-2">
                 <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    setAttachment(e.target.files?.[0] ?? null);
+                    e.target.value = "";
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={!!editing}
+                  aria-label="Attach a file"
+                  title={
+                    editing ? "Cannot attach while editing" : "Attach a file"
+                  }
+                  className="shrink-0 self-center text-gray-500 hover:text-primary-700 disabled:opacity-40"
+                >
+                  <Paperclip className="h-4 w-4" />
+                </button>
+                <input
                   ref={composerRef}
                   value={draft}
                   onChange={(e) =>
@@ -746,7 +790,9 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
                 />
                 <button
                   type="submit"
-                  disabled={sending || savingEdit || !draft.trim()}
+                  disabled={
+                    sending || savingEdit || (!draft.trim() && !attachment)
+                  }
                   className="bg-primary-700 text-white rounded-lg px-4 flex items-center disabled:opacity-50"
                 >
                   <Send className="w-4 h-4" />
@@ -794,6 +840,18 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
           </>
         )}
       </div>
+
+      {viewing && (
+        <ImageViewer
+          message={viewing}
+          mine={viewing.senderCognitoId === me}
+          senderName={otherName}
+          onClose={() => setViewing(null)}
+          onReply={handleReply}
+          onEdit={startEdit}
+          onDelete={setPendingDelete}
+        />
+      )}
     </div>
   );
 };

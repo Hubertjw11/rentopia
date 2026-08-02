@@ -246,6 +246,9 @@ model Message {
   deletedAt       DateTime?
   hiddenForSenderAt DateTime?
   editedAt DateTime?
+  attachmentUrl  String?
+  attachmentType String?
+  attachmentName String?
   replyToId       Int?
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)

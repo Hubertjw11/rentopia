@@ -6,11 +6,9 @@ import {
   Highlight,
   PropertyType,
 } from "@prisma/client";
-import { randomUUID } from "crypto";
 import { prisma } from "../lib/prisma";
+import { uploadFile } from "../lib/s3";
 import { wktToGeoJSON } from "@terraformer/wkt";
-import { S3Client } from "@aws-sdk/client-s3";
-import { Upload } from "@aws-sdk/lib-storage";
 import axios from "axios";
 import { parseId, parseNumber } from "../lib/params";
 
@@ -22,10 +20,6 @@ const propertySource = Prisma.sql`
   FROM "Property" p
   JOIN "Location" l ON p."locationId" = l.id
 `;
-
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION,
-});
 
 const buildPropertyWhere = (query: Request["query"]): Prisma.Sql => {
   const {
@@ -152,7 +146,9 @@ export const getProperties = async (
 
     const requestedPage = parseNumber(req.query.page);
     const page =
-      requestedPage === null || requestedPage < 1 ? 1 : Math.floor(requestedPage);
+      requestedPage === null || requestedPage < 1
+        ? 1
+        : Math.floor(requestedPage);
     const offset = (page - 1) * limit;
 
     const totals = await prisma.$queryRaw<{ count: number }[]>`
@@ -356,27 +352,9 @@ export const createProperty = async (
       return;
     }
 
-    const uploads = await Promise.all(
-      files.map(async (file) => {
-        const result = await new Upload({
-          client: s3Client,
-          params: {
-            Bucket: process.env.S3_BUCKET_NAME!,
-            Key: `properties/${randomUUID()}-${file.originalname}`,
-            Body: file.buffer,
-            ContentType: file.mimetype,
-          },
-        }).done();
-
-        return result.Location;
-      }),
+    const photoUrls = await Promise.all(
+      files.map((file) => uploadFile(file, "properties")),
     );
-
-    if (uploads.some((url) => !url)) {
-      res.status(502).json({ message: "A photo failed to upload" });
-      return;
-    }
-    const photoUrls = uploads as string[];
 
     const geocodingUrl = `https://nominatim.openstreetmap.org/search?${new URLSearchParams(
       {

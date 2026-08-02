@@ -1,6 +1,11 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 import { parseId, parseNumber } from "../lib/params";
+import { uploadFile } from "../lib/s3";
+
+const ALLOWED_ATTACHMENT_TYPES = ["application/pdf"];
+const isAllowedAttachment = (mimetype: string) =>
+  mimetype.startsWith("image/") || ALLOWED_ATTACHMENT_TYPES.includes(mimetype);
 
 const MAX_DELETE_BATCH = 100;
 const DEFAULT_SEARCH_LIMIT = 30;
@@ -46,6 +51,8 @@ type ReplyPreview = {
   senderCognitoId: string;
   body: string;
   deletedAt: Date | null;
+  attachmentUrl: string | null;
+  attachmentType: string | null;
 };
 
 type MessageRow = {
@@ -57,6 +64,9 @@ type MessageRow = {
   createdAt: Date;
   deletedAt: Date | null;
   editedAt: Date | null;
+  attachmentUrl: string | null;
+  attachmentType: string | null;
+  attachmentName: string | null;
   replyTo: ReplyPreview | null;
 };
 
@@ -69,19 +79,41 @@ const toMessageDto = (m: MessageRow) => ({
   createdAt: m.createdAt,
   isDeleted: m.deletedAt !== null,
   isEdited: m.deletedAt === null && m.editedAt !== null,
+  attachment:
+    m.deletedAt === null && m.attachmentUrl
+      ? {
+          url: m.attachmentUrl,
+          type: m.attachmentType ?? "",
+          name: m.attachmentName ?? "attachment",
+        }
+      : null,
   replyTo: m.replyTo
     ? {
         id: m.replyTo.id,
         senderCognitoId: m.replyTo.senderCognitoId,
         body: m.replyTo.deletedAt ? "" : m.replyTo.body,
         isDeleted: m.replyTo.deletedAt !== null,
+        attachment:
+          m.replyTo.deletedAt === null && m.replyTo.attachmentUrl
+            ? {
+                url: m.replyTo.attachmentUrl,
+                type: m.replyTo.attachmentType ?? "",
+              }
+            : null,
       }
     : null,
 });
 
 const replyInclude = {
   replyTo: {
-    select: { id: true, senderCognitoId: true, body: true, deletedAt: true },
+    select: {
+      id: true,
+      senderCognitoId: true,
+      body: true,
+      deletedAt: true,
+      attachmentUrl: true,
+      attachmentType: true,
+    },
   },
 } as const;
 
@@ -267,9 +299,15 @@ export const sendMessage = async (
 
     const userId = req.user!.id;
     const body = String(req.body.body ?? "").trim();
+    const file = req.file;
 
-    if (!body) {
+    if (!body && !file) {
       res.status(400).json({ message: "Message body is required" });
+      return;
+    }
+
+    if (file && !isAllowedAttachment(file.mimetype)) {
+      res.status(400).json({ message: "Only images and PDFs can be attached" });
       return;
     }
 
@@ -296,9 +334,19 @@ export const sendMessage = async (
       }
     }
 
+    const attachmentUrl = file ? await uploadFile(file, "attachments") : null;
+
     const message = await prisma.$transaction(async (tx) => {
       const created = await tx.message.create({
-        data: { conversationId, senderCognitoId: userId, body, replyToId },
+        data: {
+          conversationId,
+          senderCognitoId: userId,
+          body,
+          replyToId,
+          attachmentUrl,
+          attachmentType: file ? file.mimetype : null,
+          attachmentName: file ? file.originalname : null,
+        },
         include: replyInclude,
       });
 
