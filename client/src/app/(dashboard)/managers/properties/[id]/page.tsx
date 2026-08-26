@@ -21,6 +21,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useDownload } from "@/hooks/useDownload";
 import React from "react";
+import { formatIDR } from "@/lib/utils";
 
 const PropertyTenants = () => {
   const { id } = useParams();
@@ -137,7 +138,7 @@ const PropertyTenants = () => {
                       </div>
                       <div>{new Date(lease.endDate).toLocaleDateString()}</div>
                     </TableCell>
-                    <TableCell>${lease.rent.toFixed(2)}</TableCell>
+                    <TableCell>{formatIDR(lease.rent)}</TableCell>
                     <TableCell>
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-semibold ${

@@ -1,3 +1,4 @@
+import { formatIDR } from "@/lib/utils";
 import { Mail, MapPin, PhoneCall } from "lucide-react";
 import Image from "next/image";
 import React, { useState } from "react";
@@ -46,7 +47,7 @@ const ApplicationCard = ({
               </div>
             </div>
             <div className="text-xl font-semibold">
-              ${application.property.pricePerMonth}{" "}
+              {formatIDR(application.property.pricePerMonth)}{" "}
               <span className="text-sm font-normal">/ month</span>
             </div>
           </div>

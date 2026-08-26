@@ -31,7 +31,11 @@ export type AgreementData = {
 };
 
 const money = (n: number) =>
-  `$${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(n);
 
 const longDate = (d: Date) =>
   new Date(d).toLocaleDateString("en-US", {

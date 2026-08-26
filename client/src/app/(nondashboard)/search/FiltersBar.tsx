@@ -9,7 +9,12 @@ import { usePathname, useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { debounce } from "lodash";
-import { cleanParams, cn, formatPriceValue } from "@/lib/utils";
+import {
+  cleanParams,
+  cn,
+  formatIDRCompact,
+  formatPriceValue,
+} from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Filter, Grid, List, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -154,9 +159,12 @@ const FiltersBar = () => {
             </SelectTrigger>
             <SelectContent className="bg-white">
               <SelectItem value="any">Any Min Price</SelectItem>
-              {[500, 1000, 1500, 2000, 3000, 5000, 10000].map((price) => (
+              {[
+                1_000_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000,
+                20_000_000, 50_000_000,
+              ].map((price) => (
                 <SelectItem key={price} value={price.toString()}>
-                  ${price / 1000}k+
+                  {formatIDRCompact(price)}+
                 </SelectItem>
               ))}
             </SelectContent>
@@ -176,9 +184,12 @@ const FiltersBar = () => {
             </SelectTrigger>
             <SelectContent className="bg-white">
               <SelectItem value="any">Any Max Price</SelectItem>
-              {[1000, 2000, 3000, 5000, 10000].map((price) => (
+              {[
+                2_000_000, 3_000_000, 5_000_000, 10_000_000, 20_000_000,
+                50_000_000,
+              ].map((price) => (
                 <SelectItem key={price} value={price.toString()}>
-                  &lt;${price / 1000}k+
+                  &lt;{formatIDRCompact(price)}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -17,6 +17,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { Button } from "@/components/ui/button";
+import LocationPicker from "./LocationPicker";
 
 const NewProperty = () => {
   const [createProperty] = useCreatePropertyMutation();
@@ -29,9 +30,9 @@ const NewProperty = () => {
     defaultValues: {
       name: "",
       description: "",
-      pricePerMonth: 1000,
-      securityDeposit: 500,
-      applicationFee: 100,
+      pricePerMonth: 3_500_000,
+      securityDeposit: 3_500_000,
+      applicationFee: 250_000,
       isPetsAllowed: true,
       isParkingIncluded: true,
       photoUrls: [],
@@ -234,8 +235,18 @@ const NewProperty = () => {
                 />
               </div>
               <CustomFormField name="country" label="Country" />
-            </div>
 
+              <div>
+                <h3 className="mb-2 text-sm font-medium">
+                  Pin the exact location
+                </h3>
+                <p className="mb-3 text-xs text-gray-500">
+                  Address lookup is often several kilometres off in Indonesia,
+                  so search by landmark if that's easier.
+                </p>
+                <LocationPicker />
+              </div>
+            </div>
             <Button
               type="submit"
               className="bg-primary-700 text-white w-full mt-8"

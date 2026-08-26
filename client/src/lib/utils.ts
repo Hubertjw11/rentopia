@@ -10,14 +10,32 @@ export function formatEnumString(str: string) {
   return str.replace(/([A-Z])/g, " $1").trim();
 }
 
+const IDR = new Intl.NumberFormat("id-ID", {
+  style: "currency",
+  currency: "IDR",
+  maximumFractionDigits: 0,
+});
+
+const decimal = new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 });
+
+export function formatIDR(value: number) {
+  return IDR.format(value);
+}
+
+export function formatIDRCompact(value: number) {
+  if (value >= 1_000_000_000)
+    return `Rp ${decimal.format(value / 1_000_000_000)} M`;
+  if (value >= 1_000_000) return `Rp ${decimal.format(value / 1_000_000)} jt`;
+  if (value >= 1_000) return `Rp ${decimal.format(value / 1_000)} rb`;
+  return formatIDR(value);
+}
+
 export function formatPriceValue(value: number | null, isMin: boolean) {
   if (value === null || value === 0)
     return isMin ? "Any Min Price" : "Any Max Price";
-  if (value >= 1000) {
-    const kValue = value / 1000;
-    return isMin ? `$${kValue}k+` : `<$${kValue}k`;
-  }
-  return isMin ? `$${value}+` : `<$${value}`;
+  return isMin
+    ? `${formatIDRCompact(value)}+`
+    : `<${formatIDRCompact(value)}`;
 }
 
 export function timeAgo(iso: string) {

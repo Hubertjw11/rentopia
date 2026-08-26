@@ -21,6 +21,49 @@ const propertySource = Prisma.sql`
   JOIN "Location" l ON p."locationId" = l.id
 `;
 
+const MAPBOX_GEOCODE_URL = "https://api.mapbox.com/search/geocode/v6/forward";
+
+type GeocodeHit = { longitude: number; latitude: number; accuracy?: string };
+
+const ADDRESS_LEVEL = ["rooftop", "parcel", "point", "interpolated"];
+
+const geocodeAddress = async (
+  params: Record<string, string>,
+  requireAddressLevel: boolean,
+): Promise<GeocodeHit | null> => {
+  const response = await axios.get(MAPBOX_GEOCODE_URL, {
+    params: {
+      ...params,
+      access_token: process.env.MAPBOX_ACCESS_TOKEN,
+      limit: "1",
+      autocomplete: "false",
+    },
+    timeout: 8000,
+  });
+
+  const feature = response.data?.features?.[0];
+  const coordinates = feature?.properties?.coordinates;
+  if (
+    typeof coordinates?.longitude !== "number" ||
+    typeof coordinates?.latitude !== "number"
+  ) {
+    return null;
+  }
+
+  if (requireAddressLevel && !ADDRESS_LEVEL.includes(coordinates.accuracy)) {
+    console.warn(
+      `Geocoder gave ${feature.properties?.feature_type}/${coordinates.accuracy} for "${feature.properties?.full_address ?? ""}" — retrying`,
+    );
+    return null;
+  }
+
+  return {
+    longitude: coordinates.longitude,
+    latitude: coordinates.latitude,
+    accuracy: coordinates.accuracy,
+  };
+};
+
 const buildPropertyWhere = (query: Request["query"]): Prisma.Sql => {
   const {
     favoriteIds,
@@ -356,23 +399,54 @@ export const createProperty = async (
       files.map((file) => uploadFile(file, "properties")),
     );
 
-    const geocodingUrl = `https://nominatim.openstreetmap.org/search?${new URLSearchParams(
-      {
-        street: address,
-        city,
-        country,
-        postalcode: postalCode,
-        format: "json",
-        limit: "1",
-      },
-    ).toString()}`;
+    const pinnedLat = parseNumber(req.body.latitude);
+    const pinnedLng = parseNumber(req.body.longitude);
+    const hasPin =
+      pinnedLat !== null &&
+      pinnedLng !== null &&
+      pinnedLat >= -90 &&
+      pinnedLat <= 90 &&
+      pinnedLng >= -180 &&
+      pinnedLng <= 180;
 
-    let geocodingResponse;
+    let longitude: number;
+    let latitude: number;
+
+    if (hasPin) {
+      longitude = pinnedLng;
+      latitude = pinnedLat;
+    } else {
+      if (!process.env.MAPBOX_ACCESS_TOKEN) {
+        console.error("MAPBOX_ACCESS_TOKEN is not set — add it to server/.env");
+        res
+          .status(503)
+          .json({ message: "Address lookup is unavailable, try again shortly" });
+        return;
+      }
+
+      const freeForm = [address, city, state, country].join(", ");
+    const attempts: Array<[Record<string, string>, boolean]> = [
+      [
+        {
+          address_line1: address,
+          place: city,
+          region: state,
+          postcode: postalCode,
+          country,
+          types: "address",
+        },
+        true,
+      ],
+      [{ q: freeForm, types: "address" }, true],
+      [{ q: freeForm }, false],
+    ];
+
+    let match: GeocodeHit | null = null;
     try {
-      geocodingResponse = await axios.get(geocodingUrl, {
-        headers: { "User-Agent": "Rentopia (hubertjw05@gmail.com)" },
-        timeout: 8000,
-      });
+      for (const [params, requireAddressLevel] of attempts) {
+        match = await geocodeAddress(params, requireAddressLevel);
+        if (match) break;
+      }
     } catch (geocodingError) {
       console.error("Geocoding request failed:", geocodingError);
       res
@@ -381,15 +455,23 @@ export const createProperty = async (
       return;
     }
 
-    const match = geocodingResponse.data?.[0];
-    if (!match?.lon || !match?.lat) {
+    if (!match) {
       res
         .status(400)
         .json({ message: "That address could not be located, check it again" });
       return;
     }
-    const longitude = parseFloat(match.lon);
-    const latitude = parseFloat(match.lat);
+
+      if (
+        match.accuracy &&
+        !["rooftop", "parcel", "point"].includes(match.accuracy)
+      ) {
+        console.warn(`Geocoded "${address}" at ${match.accuracy} accuracy`);
+      }
+
+      longitude = match.longitude;
+      latitude = match.latitude;
+    }
 
     const newProperty = await prisma.$transaction(async (tx) => {
       const [location] = await tx.$queryRaw<Location[]>`

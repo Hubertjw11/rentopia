@@ -5,6 +5,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { useAppSelector } from "@/state/redux";
 import { useGetPropertyMarkersQuery } from "@/state/api";
 import { PropertyMarker } from "@/types/model";
+import { formatIDRCompact } from "@/lib/utils";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN as string;
 
@@ -83,7 +84,7 @@ const createPropertyMarker = (property: PropertyMarker, map: mapboxgl.Map) => {
             <div>
                 <a href="/search/${property.id}" target="_blank" class="marker-popup-title">${property.name}</a>
                 <p class="marker-popup-price">
-                    $${property.pricePerMonth}
+                    ${formatIDRCompact(property.pricePerMonth)}
                     <span class="marker-popup-price-unit"> / month</span>
                 </p>
             </div>

@@ -1,3 +1,4 @@
+import { formatIDRCompact } from "@/lib/utils";
 import { Bath, Bed, Heart, House, Star } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -97,7 +98,7 @@ const CardCompact = ({
           </div>
 
           <p className="text-base font-bold">
-            ${property.pricePerMonth.toFixed(0)}
+            {formatIDRCompact(property.pricePerMonth)}
             <span className="text-gray-600 text-xs font-normal"> /mo</span>
           </p>
         </div>

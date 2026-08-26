@@ -22,6 +22,8 @@ export const propertySchema = z.object({
   baths: z.coerce.number().positive().max(10),
   squareFeet: z.coerce.number().int().positive(),
   propertyType: z.nativeEnum(PropertyTypeEnum),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
   address: z.string().min(1, "Address is required"),
   city: z.string().min(1, "City is required"),
   state: z.string().min(1, "State is required"),
