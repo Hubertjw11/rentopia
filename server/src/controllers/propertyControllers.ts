@@ -306,6 +306,212 @@ export const getProperty = async (
   }
 };
 
+type PropertyInput = {
+  name: string;
+  description: string;
+  propertyType: PropertyType;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  postalCode: string;
+  amenities: Amenity[];
+  highlights: Highlight[];
+  pricePerMonth: number;
+  securityDeposit: number;
+  applicationFee: number;
+  beds: number;
+  baths: number;
+  squareFeet: number;
+  isPetsAllowed: boolean;
+  isParkingIncluded: boolean;
+  pin: { longitude: number; latitude: number } | null;
+};
+
+const parsePropertyBody = (
+  body: Request["body"],
+): { ok: true; value: PropertyInput } | { ok: false; message: string } => {
+  const text = (value: unknown): string | null =>
+    typeof value === "string" && value.trim() ? value.trim() : null;
+
+  const address = text(body.address);
+  const city = text(body.city);
+  const state = text(body.state);
+  const country = text(body.country);
+  const postalCode = text(body.postalCode);
+  const name = text(body.name);
+  const description = text(body.description);
+  const propertyType = text(body.propertyType);
+
+  if (
+    !address ||
+    !city ||
+    !state ||
+    !country ||
+    !postalCode ||
+    !name ||
+    !description ||
+    !propertyType
+  ) {
+    return { ok: false, message: "Some required fields are missing" };
+  }
+
+  const parseEnumList = <T extends string>(
+    raw: unknown,
+    allowed: readonly T[],
+  ): T[] | null => {
+    if (typeof raw !== "string" || !raw.trim()) return [];
+    const values = raw
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+    return values.every((value) =>
+      (allowed as readonly string[]).includes(value),
+    )
+      ? (values as T[])
+      : null;
+  };
+
+  const amenities = parseEnumList(body.amenities, Object.values(Amenity));
+  const highlights = parseEnumList(body.highlights, Object.values(Highlight));
+  if (amenities === null || highlights === null) {
+    return { ok: false, message: "Unknown amenity or highlight" };
+  }
+  if (!(Object.values(PropertyType) as string[]).includes(propertyType)) {
+    return { ok: false, message: "Unknown property type" };
+  }
+
+  const pricePerMonth = parseNumber(body.pricePerMonth);
+  const securityDeposit = parseNumber(body.securityDeposit);
+  const applicationFee = parseNumber(body.applicationFee);
+  const beds = parseNumber(body.beds);
+  const baths = parseNumber(body.baths);
+  const squareFeet = parseNumber(body.squareFeet);
+
+  const positive = (n: number | null) => n !== null && n > 0;
+  if (
+    !positive(pricePerMonth) ||
+    !positive(securityDeposit) ||
+    !positive(applicationFee) ||
+    !positive(beds) ||
+    !positive(baths) ||
+    !positive(squareFeet) ||
+    !Number.isInteger(beds) ||
+    !Number.isInteger(squareFeet)
+  ) {
+    return { ok: false, message: "Invalid price, size or room count" };
+  }
+
+  const pinnedLat = parseNumber(body.latitude);
+  const pinnedLng = parseNumber(body.longitude);
+  const hasPin =
+    pinnedLat !== null &&
+    pinnedLng !== null &&
+    pinnedLat >= -90 &&
+    pinnedLat <= 90 &&
+    pinnedLng >= -180 &&
+    pinnedLng <= 180;
+
+  return {
+    ok: true,
+    value: {
+      name,
+      description,
+      propertyType: propertyType as PropertyType,
+      address,
+      city,
+      state,
+      country,
+      postalCode,
+      amenities,
+      highlights,
+      pricePerMonth: pricePerMonth!,
+      securityDeposit: securityDeposit!,
+      applicationFee: applicationFee!,
+      beds: beds!,
+      baths: baths!,
+      squareFeet: squareFeet!,
+      isPetsAllowed: body.isPetsAllowed === "true",
+      isParkingIncluded: body.isParkingIncluded === "true",
+      pin: hasPin ? { longitude: pinnedLng!, latitude: pinnedLat! } : null,
+    },
+  };
+};
+
+const resolveCoordinates = async (
+  input: PropertyInput,
+): Promise<
+  | { ok: true; longitude: number; latitude: number }
+  | { ok: false; status: number; message: string }
+> => {
+  if (input.pin) {
+    return {
+      ok: true,
+      longitude: input.pin.longitude,
+      latitude: input.pin.latitude,
+    };
+  }
+
+  if (!process.env.MAPBOX_ACCESS_TOKEN) {
+    console.error("MAPBOX_ACCESS_TOKEN is not set — add it to server/.env");
+    return {
+      ok: false,
+      status: 503,
+      message: "Address lookup is unavailable, try again shortly",
+    };
+  }
+
+  const { address, city, state, country, postalCode } = input;
+  const freeForm = [address, city, state, country].join(", ");
+  const attempts: Array<[Record<string, string>, boolean]> = [
+    [
+      {
+        address_line1: address,
+        place: city,
+        region: state,
+        postcode: postalCode,
+        country,
+        types: "address",
+      },
+      true,
+    ],
+    [{ q: freeForm, types: "address" }, true],
+    [{ q: freeForm }, false],
+  ];
+
+  let match: GeocodeHit | null = null;
+  try {
+    for (const [params, requireAddressLevel] of attempts) {
+      match = await geocodeAddress(params, requireAddressLevel);
+      if (match) break;
+    }
+  } catch (geocodingError) {
+    console.error("Geocoding request failed:", geocodingError);
+    return {
+      ok: false,
+      status: 503,
+      message: "Address lookup is unavailable, try again shortly",
+    };
+  }
+
+  if (!match) {
+    return {
+      ok: false,
+      status: 400,
+      message: "That address could not be located, check it again",
+    };
+  }
+
+  if (
+    match.accuracy &&
+    !["rooftop", "parcel", "point"].includes(match.accuracy)
+  ) {
+    console.warn(`Geocoded "${address}" at ${match.accuracy} accuracy`);
+  }
+
+  return { ok: true, longitude: match.longitude, latitude: match.latitude };
+};
+
 export const createProperty = async (
   req: Request,
   res: Response,
@@ -317,81 +523,16 @@ export const createProperty = async (
       return;
     }
 
-    const text = (value: unknown): string | null =>
-      typeof value === "string" && value.trim() ? value.trim() : null;
-
-    const address = text(req.body.address);
-    const city = text(req.body.city);
-    const state = text(req.body.state);
-    const country = text(req.body.country);
-    const postalCode = text(req.body.postalCode);
-    const name = text(req.body.name);
-    const description = text(req.body.description);
-    const propertyType = text(req.body.propertyType);
-
-    if (
-      !address ||
-      !city ||
-      !state ||
-      !country ||
-      !postalCode ||
-      !name ||
-      !description ||
-      !propertyType
-    ) {
-      res.status(400).json({ message: "Some required fields are missing" });
+    const parsed = parsePropertyBody(req.body);
+    if (!parsed.ok) {
+      res.status(400).json({ message: parsed.message });
       return;
     }
+    const input = parsed.value;
 
-    const parseEnumList = <T extends string>(
-      raw: unknown,
-      allowed: readonly T[],
-    ): T[] | null => {
-      if (typeof raw !== "string" || !raw.trim()) return [];
-      const values = raw
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean);
-      return values.every((value) =>
-        (allowed as readonly string[]).includes(value),
-      )
-        ? (values as T[])
-        : null;
-    };
-
-    const amenities = parseEnumList(req.body.amenities, Object.values(Amenity));
-    const highlights = parseEnumList(
-      req.body.highlights,
-      Object.values(Highlight),
-    );
-    if (amenities === null || highlights === null) {
-      res.status(400).json({ message: "Unknown amenity or highlight" });
-      return;
-    }
-    if (!(Object.values(PropertyType) as string[]).includes(propertyType)) {
-      res.status(400).json({ message: "Unknown property type" });
-      return;
-    }
-
-    const pricePerMonth = parseNumber(req.body.pricePerMonth);
-    const securityDeposit = parseNumber(req.body.securityDeposit);
-    const applicationFee = parseNumber(req.body.applicationFee);
-    const beds = parseNumber(req.body.beds);
-    const baths = parseNumber(req.body.baths);
-    const squareFeet = parseNumber(req.body.squareFeet);
-
-    const positive = (n: number | null) => n !== null && n > 0;
-    if (
-      !positive(pricePerMonth) ||
-      !positive(securityDeposit) ||
-      !positive(applicationFee) ||
-      !positive(beds) ||
-      !positive(baths) ||
-      !positive(squareFeet) ||
-      !Number.isInteger(beds) ||
-      !Number.isInteger(squareFeet)
-    ) {
-      res.status(400).json({ message: "Invalid price, size or room count" });
+    const coordinates = await resolveCoordinates(input);
+    if (!coordinates.ok) {
+      res.status(coordinates.status).json({ message: coordinates.message });
       return;
     }
 
@@ -399,105 +540,31 @@ export const createProperty = async (
       files.map((file) => uploadFile(file, "properties")),
     );
 
-    const pinnedLat = parseNumber(req.body.latitude);
-    const pinnedLng = parseNumber(req.body.longitude);
-    const hasPin =
-      pinnedLat !== null &&
-      pinnedLng !== null &&
-      pinnedLat >= -90 &&
-      pinnedLat <= 90 &&
-      pinnedLng >= -180 &&
-      pinnedLng <= 180;
-
-    let longitude: number;
-    let latitude: number;
-
-    if (hasPin) {
-      longitude = pinnedLng;
-      latitude = pinnedLat;
-    } else {
-      if (!process.env.MAPBOX_ACCESS_TOKEN) {
-        console.error("MAPBOX_ACCESS_TOKEN is not set — add it to server/.env");
-        res
-          .status(503)
-          .json({ message: "Address lookup is unavailable, try again shortly" });
-        return;
-      }
-
-      const freeForm = [address, city, state, country].join(", ");
-    const attempts: Array<[Record<string, string>, boolean]> = [
-      [
-        {
-          address_line1: address,
-          place: city,
-          region: state,
-          postcode: postalCode,
-          country,
-          types: "address",
-        },
-        true,
-      ],
-      [{ q: freeForm, types: "address" }, true],
-      [{ q: freeForm }, false],
-    ];
-
-    let match: GeocodeHit | null = null;
-    try {
-      for (const [params, requireAddressLevel] of attempts) {
-        match = await geocodeAddress(params, requireAddressLevel);
-        if (match) break;
-      }
-    } catch (geocodingError) {
-      console.error("Geocoding request failed:", geocodingError);
-      res
-        .status(503)
-        .json({ message: "Address lookup is unavailable, try again shortly" });
-      return;
-    }
-
-    if (!match) {
-      res
-        .status(400)
-        .json({ message: "That address could not be located, check it again" });
-      return;
-    }
-
-      if (
-        match.accuracy &&
-        !["rooftop", "parcel", "point"].includes(match.accuracy)
-      ) {
-        console.warn(`Geocoded "${address}" at ${match.accuracy} accuracy`);
-      }
-
-      longitude = match.longitude;
-      latitude = match.latitude;
-    }
-
     const newProperty = await prisma.$transaction(async (tx) => {
       const [location] = await tx.$queryRaw<Location[]>`
         INSERT INTO "Location" (address, city, state, country, "postalCode", coordinates)
-        VALUES (${address}, ${city}, ${state}, ${country}, ${postalCode}, ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326))
+        VALUES (${input.address}, ${input.city}, ${input.state}, ${input.country}, ${input.postalCode}, ST_SetSRID(ST_MakePoint(${coordinates.longitude}, ${coordinates.latitude}), 4326))
         RETURNING id, address, city, state, country, "postalCode", ST_AsText(coordinates) as coordinates;
       `;
 
       return tx.property.create({
         data: {
-          name,
-          description,
-          propertyType: propertyType as PropertyType,
+          name: input.name,
+          description: input.description,
+          propertyType: input.propertyType,
           photoUrls,
           locationId: location.id,
           managerCognitoId: req.user!.id,
-          amenities,
-          highlights,
-          isPetsAllowed: req.body.isPetsAllowed === "true",
-          isParkingIncluded: req.body.isParkingIncluded === "true",
-          pricePerMonth: pricePerMonth!,
-          securityDeposit: securityDeposit!,
-          applicationFee: applicationFee!,
-          beds: beds!,
-          baths: baths!,
-          squareFeet: squareFeet!,
+          amenities: input.amenities,
+          highlights: input.highlights,
+          isPetsAllowed: input.isPetsAllowed,
+          isParkingIncluded: input.isParkingIncluded,
+          pricePerMonth: input.pricePerMonth,
+          securityDeposit: input.securityDeposit,
+          applicationFee: input.applicationFee,
+          beds: input.beds,
+          baths: input.baths,
+          squareFeet: input.squareFeet,
         },
         include: { location: true, manager: true },
       });
@@ -507,5 +574,111 @@ export const createProperty = async (
   } catch (error) {
     console.error("createProperty failed:", error);
     res.status(500).json({ message: "Error creating property" });
+  }
+};
+
+export const updateProperty = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const propertyId = parseId(req.params.id);
+    if (propertyId === null) {
+      res.status(400).json({ message: "Invalid property id" });
+      return;
+    }
+
+    const existing = await prisma.property.findFirst({
+      where: { id: propertyId, managerCognitoId: req.user!.id },
+      select: { id: true, locationId: true, photoUrls: true },
+    });
+    if (!existing) {
+      res.status(404).json({ message: "Property not found" });
+      return;
+    }
+
+    const parsed = parsePropertyBody(req.body);
+    if (!parsed.ok) {
+      res.status(400).json({ message: parsed.message });
+      return;
+    }
+    const input = parsed.value;
+
+    const rawKept = req.body.keptPhotoUrls;
+    let kept: string[];
+    try {
+      const list =
+        typeof rawKept === "string" && rawKept.trim() ? JSON.parse(rawKept) : [];
+      if (
+        !Array.isArray(list) ||
+        list.some((url: unknown) => typeof url !== "string")
+      ) {
+        throw new Error("keptPhotoUrls is not a string array");
+      }
+      kept = list as string[];
+    } catch {
+      res.status(400).json({ message: "Invalid photo selection" });
+      return;
+    }
+
+    if (kept.some((url) => !existing.photoUrls.includes(url))) {
+      res.status(400).json({ message: "Invalid photo selection" });
+      return;
+    }
+
+    const files = (req.files as Express.Multer.File[] | undefined) ?? [];
+    if (kept.length === 0 && files.length === 0) {
+      res.status(400).json({ message: "At least one photo is required" });
+      return;
+    }
+
+    const coordinates = await resolveCoordinates(input);
+    if (!coordinates.ok) {
+      res.status(coordinates.status).json({ message: coordinates.message });
+      return;
+    }
+
+    const uploaded = await Promise.all(
+      files.map((file) => uploadFile(file, "properties")),
+    );
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        UPDATE "Location"
+        SET address = ${input.address},
+            city = ${input.city},
+            state = ${input.state},
+            country = ${input.country},
+            "postalCode" = ${input.postalCode},
+            coordinates = ST_SetSRID(ST_MakePoint(${coordinates.longitude}, ${coordinates.latitude}), 4326)
+        WHERE id = ${existing.locationId};
+      `;
+
+      return tx.property.update({
+        where: { id: existing.id },
+        data: {
+          name: input.name,
+          description: input.description,
+          propertyType: input.propertyType,
+          photoUrls: [...kept, ...uploaded],
+          amenities: input.amenities,
+          highlights: input.highlights,
+          isPetsAllowed: input.isPetsAllowed,
+          isParkingIncluded: input.isParkingIncluded,
+          pricePerMonth: input.pricePerMonth,
+          securityDeposit: input.securityDeposit,
+          applicationFee: input.applicationFee,
+          beds: input.beds,
+          baths: input.baths,
+          squareFeet: input.squareFeet,
+        },
+        include: { location: true, manager: true },
+      });
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error("updateProperty failed:", error);
+    res.status(500).json({ message: "Error updating property" });
   }
 };

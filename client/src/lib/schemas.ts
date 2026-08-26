@@ -33,6 +33,18 @@ export const propertySchema = z.object({
 
 export type PropertyFormData = z.infer<typeof propertySchema>;
 
+export const propertyEditSchema = propertySchema
+  .extend({
+    photoUrls: z.array(z.instanceof(File)),
+    keptPhotoUrls: z.array(z.string()),
+  })
+  .refine((data) => data.keptPhotoUrls.length + data.photoUrls.length > 0, {
+    message: "At least one photo is required",
+    path: ["photoUrls"],
+  });
+
+export type PropertyEditFormData = z.infer<typeof propertyEditSchema>;
+
 export const applicationSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),

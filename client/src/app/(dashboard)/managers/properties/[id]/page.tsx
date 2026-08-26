@@ -15,7 +15,13 @@ import {
   useGetPropertyLeasesQuery,
   useGetPropertyQuery,
 } from "@/state/api";
-import { ArrowDownToLine, ArrowLeft, Check, Download } from "lucide-react";
+import {
+  ArrowDownToLine,
+  ArrowLeft,
+  Check,
+  Download,
+  Pencil,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -73,7 +79,15 @@ const PropertyTenants = () => {
                 Manage and view all tenants for this property.
               </p>
             </div>
-            <div>
+            <div className="flex items-center gap-3">
+              <Link
+                href={`/managers/properties/${propertyId}/edit`}
+                className={`bg-white border border-gray-300 text-gray-700 py-2
+              px-4 rounded-md flex items-center justify-center hover:bg-primary-700 hover:text-primary-50`}
+              >
+                <Pencil className="w-5 h-5 mr-2" />
+                <span>Edit Property</span>
+              </Link>
               <button
                 onClick={() =>
                   download(

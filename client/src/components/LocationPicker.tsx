@@ -45,13 +45,25 @@ const looselyMatches = (a?: string, b?: string) => {
   return x.includes(y) || y.includes(x);
 };
 
-const LocationPicker = () => {
-  const { getValues, setValue, watch } = useFormContext();
+type LocationPickerProps = {
+  initialLongitude?: number;
+  initialLatitude?: number;
+};
+
+const LocationPicker = ({
+  initialLongitude,
+  initialLatitude,
+}: LocationPickerProps) => {
+  const { getValues, setValue, watch, formState } = useFormContext();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
 
-  const [pending, setPending] = useState<[number, number]>(DEFAULT_CENTER);
+  const [pending, setPending] = useState<[number, number]>(
+    typeof initialLongitude === "number" && typeof initialLatitude === "number"
+      ? [initialLongitude, initialLatitude]
+      : DEFAULT_CENTER,
+  );
   const [busy, setBusy] = useState<"search" | "fill" | "confirm" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [matched, setMatched] = useState<string | null>(null);
@@ -66,20 +78,29 @@ const LocationPicker = () => {
   const longitude = watch("longitude");
   const confirmed =
     typeof latitude === "number" && typeof longitude === "number";
+  const pinError = Boolean(
+    formState.errors.latitude || formState.errors.longitude,
+  );
 
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
 
+    const center: [number, number] =
+      typeof initialLongitude === "number" &&
+      typeof initialLatitude === "number"
+        ? [initialLongitude, initialLatitude]
+        : DEFAULT_CENTER;
+
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: "mapbox://styles/hubertjw11/cmrufaqjn00d101sc1a96e286",
-      center: DEFAULT_CENTER,
-      zoom: 12,
+      center,
+      zoom: center === DEFAULT_CENTER ? 12 : 16,
     });
     mapRef.current = map;
 
     const marker = new mapboxgl.Marker({ draggable: true })
-      .setLngLat(DEFAULT_CENTER)
+      .setLngLat(center)
       .addTo(map);
     markerRef.current = marker;
 
@@ -103,7 +124,7 @@ const LocationPicker = () => {
       mapRef.current = null;
       markerRef.current = null;
     };
-  }, [setValue]);
+  }, [setValue, initialLongitude, initialLatitude]);
 
   const describePin = async ([lng, lat]: [number, number]) => {
     const params = new URLSearchParams({
@@ -165,6 +186,8 @@ const LocationPicker = () => {
       setSearchHit({ coords: next, suggestion: featureToSuggestion(feature) });
       setSuggestion(null);
       setMismatch(false);
+      setValue("longitude", undefined);
+      setValue("latitude", undefined);
       setMessage("Check the pin, then confirm it or drag it where it belongs");
     } catch {
       setMessage("Lookup failed — drag the pin instead");
@@ -280,6 +303,12 @@ const LocationPicker = () => {
           </span>
         )}
       </p>
+
+      {!confirmed && pinError && (
+        <p className="text-xs font-medium text-red-500">
+          Confirm the pin before saving — this listing has no location yet.
+        </p>
+      )}
 
       {matched && (
         <p className="text-xs text-gray-500">
