@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useFormContext } from "react-hook-form";
+import { addressKey } from "@/lib/schemas";
 import { Check, MapPin, Search, Wand2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -76,8 +77,20 @@ const LocationPicker = ({
 
   const latitude = watch("latitude");
   const longitude = watch("longitude");
-  const confirmed =
+  const pinConfirmedFor = watch("pinConfirmedFor");
+  const address = watch("address");
+  const city = watch("city");
+  const state = watch("state");
+  const postalCode = watch("postalCode");
+  const country = watch("country");
+
+  const hasPin =
     typeof latitude === "number" && typeof longitude === "number";
+  const staleForAddress =
+    hasPin &&
+    pinConfirmedFor !==
+      addressKey({ address, city, state, postalCode, country });
+  const confirmed = hasPin && !staleForAddress;
   const pinError = Boolean(
     formState.errors.latitude || formState.errors.longitude,
   );
@@ -109,6 +122,9 @@ const LocationPicker = ({
       setPending([lng, lat]);
       setValue("longitude", lng, { shouldValidate: true });
       setValue("latitude", lat, { shouldValidate: true });
+      setValue("pinConfirmedFor", addressKey(getValues()), {
+        shouldValidate: true,
+      });
       setSuggestion(null);
       setMismatch(false);
       setMatched(null);
@@ -124,7 +140,7 @@ const LocationPicker = ({
       mapRef.current = null;
       markerRef.current = null;
     };
-  }, [setValue, initialLongitude, initialLatitude]);
+  }, [setValue, getValues, initialLongitude, initialLatitude]);
 
   const describePin = async ([lng, lat]: [number, number]) => {
     const params = new URLSearchParams({
@@ -199,6 +215,9 @@ const LocationPicker = ({
   const confirmPin = async () => {
     setValue("longitude", pending[0], { shouldValidate: true });
     setValue("latitude", pending[1], { shouldValidate: true });
+    setValue("pinConfirmedFor", addressKey(getValues()), {
+      shouldValidate: true,
+    });
     setMessage(null);
 
     setBusy("confirm");
@@ -304,9 +323,17 @@ const LocationPicker = ({
         )}
       </p>
 
+      {staleForAddress && !pinError && (
+        <p className="text-xs font-medium text-secondary-700">
+          The address changed since this pin was set — confirm it again.
+        </p>
+      )}
+
       {!confirmed && pinError && (
         <p className="text-xs font-medium text-red-500">
-          Confirm the pin before saving — this listing has no location yet.
+          {staleForAddress
+            ? "The address changed — confirm the pin again before saving."
+            : "Confirm the pin before saving — this listing has no location yet."}
         </p>
       )}
 

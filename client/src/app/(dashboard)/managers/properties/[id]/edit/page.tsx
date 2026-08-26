@@ -5,7 +5,11 @@ import Loading from "@/components/Loading";
 import PropertyFormFields from "@/components/PropertyFormFields";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
-import { PropertyEditFormData, propertyEditSchema } from "@/lib/schemas";
+import {
+  addressKey,
+  PropertyEditFormData,
+  propertyEditSchema,
+} from "@/lib/schemas";
 import { useGetPropertyQuery, useUpdatePropertyMutation } from "@/state/api";
 import { Property } from "@/types/model";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -47,6 +51,7 @@ const EditPropertyForm = ({ property }: { property: Property }) => {
       state: property.location.state,
       country: property.location.country,
       postalCode: property.location.postalCode,
+      pinConfirmedFor: addressKey(property.location),
     },
   });
 

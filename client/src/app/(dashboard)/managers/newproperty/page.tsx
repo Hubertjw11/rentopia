@@ -37,6 +37,7 @@ const NewProperty = () => {
       state: "",
       country: "",
       postalCode: "",
+      pinConfirmedFor: "",
     },
   });
 
