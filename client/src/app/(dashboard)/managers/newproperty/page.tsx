@@ -14,7 +14,7 @@ import {
 } from "@/lib/constants";
 import { formatEnumString } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
-import React from "react";
+import React, { useState } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import LocationPicker from "./LocationPicker";
@@ -49,6 +49,8 @@ const NewProperty = () => {
     },
   });
 
+  const [resetToken, setResetToken] = useState(0);
+
   const onSubmit = async (data: PropertyFormData) => {
     if (!authUser?.cognitoInfo?.userId) {
       throw new Error("No manager ID found");
@@ -70,7 +72,11 @@ const NewProperty = () => {
 
     formData.append("managerCognitoId", authUser.cognitoInfo.userId);
 
-    await createProperty(formData);
+    const result = await createProperty(formData);
+    if ("error" in result) return;
+
+    form.reset();
+    setResetToken((token) => token + 1);
   };
 
   return (
@@ -206,6 +212,7 @@ const NewProperty = () => {
             <div>
               <h2 className="text-lg font-semibold mb-4">Photos</h2>
               <CustomFormField
+                key={resetToken}
                 name="photoUrls"
                 label="Property Photos"
                 type="file"
@@ -244,7 +251,7 @@ const NewProperty = () => {
                   Address lookup is often several kilometres off in Indonesia,
                   so search by landmark if that's easier.
                 </p>
-                <LocationPicker />
+                <LocationPicker key={resetToken} />
               </div>
             </div>
             <Button
