@@ -198,7 +198,7 @@ const LISTINGS: Listing[] = [
         "Fully furnished three-bedroom in the central business district. Concierge, 24-hour security, two parking bays. Walking distance to offices and the mall.",
       pricePerMonth: 35000000,
       securityDeposit: 70000000,
-      applicationFee: 500029,
+      applicationFee: 500000,
       photoUrls: [
         "https://re-s3-images.s3.us-east-1.amazonaws.com/properties/77ccbf2e-ff86-404b-9ce5-34864e862cba-scbd.jpg",
       ],
