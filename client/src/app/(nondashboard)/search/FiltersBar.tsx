@@ -66,7 +66,7 @@ const FiltersBar = () => {
   ) => {
     let newValue = value;
 
-    if (key === "priceRange" || key === "squareFeet") {
+    if (key === "priceRange" || key === "areaSqm") {
       const currentArrayRange = [...filters[key]];
       if (isMin !== null) {
         const index = isMin ? 0 : 1;

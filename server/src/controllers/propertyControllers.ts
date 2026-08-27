@@ -3,6 +3,7 @@ import {
   Prisma,
   Location,
   Amenity,
+  Furnishing,
   Highlight,
   PropertyType,
 } from "@prisma/client";
@@ -72,8 +73,8 @@ const buildPropertyWhere = (query: Request["query"]): Prisma.Sql => {
     beds,
     baths,
     propertyType,
-    squareFeetMin,
-    squareFeetMax,
+    areaSqmMin,
+    areaSqmMax,
     amenities,
     availableFrom,
     latitude,
@@ -114,14 +115,14 @@ const buildPropertyWhere = (query: Request["query"]): Prisma.Sql => {
     whereConditions.push(Prisma.sql`p.baths >= ${bathsNum}`);
   }
 
-  const squareFeetMinNum = parseNumber(squareFeetMin);
-  if (squareFeetMinNum !== null) {
-    whereConditions.push(Prisma.sql`p."squareFeet" >= ${squareFeetMinNum}`);
+  const areaSqmMinNum = parseNumber(areaSqmMin);
+  if (areaSqmMinNum !== null) {
+    whereConditions.push(Prisma.sql`p."areaSqm" >= ${areaSqmMinNum}`);
   }
 
-  const squareFeetMaxNum = parseNumber(squareFeetMax);
-  if (squareFeetMaxNum !== null) {
-    whereConditions.push(Prisma.sql`p."squareFeet" <= ${squareFeetMaxNum}`);
+  const areaSqmMaxNum = parseNumber(areaSqmMax);
+  if (areaSqmMaxNum !== null) {
+    whereConditions.push(Prisma.sql`p."areaSqm" <= ${areaSqmMaxNum}`);
   }
 
   if (propertyType && propertyType !== "any") {
@@ -322,7 +323,8 @@ type PropertyInput = {
   applicationFee: number;
   beds: number;
   baths: number;
-  squareFeet: number;
+  areaSqm: number;
+  furnishing: Furnishing | null;
   isPetsAllowed: boolean;
   isParkingIncluded: boolean;
   pin: { longitude: number; latitude: number } | null;
@@ -381,12 +383,20 @@ const parsePropertyBody = (
     return { ok: false, message: "Unknown property type" };
   }
 
+  const furnishing = text(body.furnishing);
+  if (
+    furnishing !== null &&
+    !(Object.values(Furnishing) as string[]).includes(furnishing)
+  ) {
+    return { ok: false, message: "Unknown furnishing" };
+  }
+
   const pricePerMonth = parseNumber(body.pricePerMonth);
   const securityDeposit = parseNumber(body.securityDeposit);
   const applicationFee = parseNumber(body.applicationFee);
   const beds = parseNumber(body.beds);
   const baths = parseNumber(body.baths);
-  const squareFeet = parseNumber(body.squareFeet);
+  const areaSqm = parseNumber(body.areaSqm);
 
   const positive = (n: number | null) => n !== null && n > 0;
   if (
@@ -395,9 +405,9 @@ const parsePropertyBody = (
     !positive(applicationFee) ||
     !positive(beds) ||
     !positive(baths) ||
-    !positive(squareFeet) ||
+    !positive(areaSqm) ||
     !Number.isInteger(beds) ||
-    !Number.isInteger(squareFeet)
+    !Number.isInteger(areaSqm)
   ) {
     return { ok: false, message: "Invalid price, size or room count" };
   }
@@ -430,7 +440,8 @@ const parsePropertyBody = (
       applicationFee: applicationFee!,
       beds: beds!,
       baths: baths!,
-      squareFeet: squareFeet!,
+      areaSqm: areaSqm!,
+      furnishing: furnishing as Furnishing | null,
       isPetsAllowed: body.isPetsAllowed === "true",
       isParkingIncluded: body.isParkingIncluded === "true",
       pin: hasPin ? { longitude: pinnedLng!, latitude: pinnedLat! } : null,
@@ -564,7 +575,8 @@ export const createProperty = async (
           applicationFee: input.applicationFee,
           beds: input.beds,
           baths: input.baths,
-          squareFeet: input.squareFeet,
+          areaSqm: input.areaSqm,
+          furnishing: input.furnishing,
         },
         include: { location: true, manager: true },
       });
@@ -670,7 +682,8 @@ export const updateProperty = async (
           applicationFee: input.applicationFee,
           beds: input.beds,
           baths: input.baths,
-          squareFeet: input.squareFeet,
+          areaSqm: input.areaSqm,
+          furnishing: input.furnishing,
         },
         include: { location: true, manager: true },
       });

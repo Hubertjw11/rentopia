@@ -93,7 +93,7 @@ const CardCompact = ({
             </span>
             <span className="flex items-center">
               <House className="w-4 h-4 mr-1" />
-              {property.squareFeet}
+              {property.areaSqm} m²
             </span>
           </div>
 

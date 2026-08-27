@@ -258,28 +258,28 @@ const FiltersFull = () => {
           </div>
         </div>
 
-        {/* Square Feet */}
+        {/* Area */}
         <div>
-          <h4 className="font-bold mb-2">Square Feet</h4>
+          <h4 className="font-bold mb-2">Area (m²)</h4>
           <Slider
             min={0}
-            max={5000}
-            step={100}
+            max={500}
+            step={10}
             value={[
-              localFilters.squareFeet[0] ?? 0,
-              localFilters.squareFeet[1] ?? 5000,
+              localFilters.areaSqm[0] ?? 0,
+              localFilters.areaSqm[1] ?? 500,
             ]}
             onValueChange={(value) =>
               setLocalFilters((prev) => ({
                 ...prev,
-                squareFeet: value as [number, number],
+                areaSqm: value as [number, number],
               }))
             }
             className="[&>.bar]:bg-primary-700"
           />
           <div className="flex justify-between mt-2">
-            <span>{localFilters.squareFeet[0] ?? 0} sq ft</span>
-            <span>{localFilters.squareFeet[1] ?? 5000} sq ft</span>
+            <span>{localFilters.areaSqm[0] ?? 0} m²</span>
+            <span>{localFilters.areaSqm[1] ?? 500} m²</span>
           </div>
         </div>
 

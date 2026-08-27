@@ -8,7 +8,7 @@ export interface FiltersState {
   amenities: string[];
   availableFrom: string;
   priceRange: [number, number] | [null, null];
-  squareFeet: [number, number] | [null, null];
+  areaSqm: [number, number] | [null, null];
   coordinates: [number, number];
 }
 
@@ -27,7 +27,7 @@ export const initialState: InitialStateTypes = {
     amenities: [],
     availableFrom: "any",
     priceRange: [null, null],
-    squareFeet: [null, null],
+    areaSqm: [null, null],
     coordinates: [-118.25, 34.05],
   },
   isFiltersFullOpen: false,

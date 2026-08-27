@@ -92,6 +92,18 @@ export const HighlightIcons: Record<HighlightEnum, LucideIcon> = {
   QuietNeighborhood: VolumeX,
 };
 
+export enum FurnishingEnum {
+  Full = "Full",
+  Semi = "Semi",
+  Unfurnished = "Unfurnished",
+}
+
+export const FurnishingLabels: Record<FurnishingEnum, string> = {
+  Full: "Fully furnished",
+  Semi: "Semi furnished",
+  Unfurnished: "Unfurnished",
+};
+
 export enum PropertyTypeEnum {
   Rooms = "Rooms",
   Tinyhouse = "Tinyhouse",

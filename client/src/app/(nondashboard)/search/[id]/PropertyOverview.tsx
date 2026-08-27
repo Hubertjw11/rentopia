@@ -1,3 +1,4 @@
+import { FurnishingEnum, FurnishingLabels } from "@/lib/constants";
 import { formatIDR } from "@/lib/utils";
 import { useGetPropertyQuery } from "@/state/api";
 import { MapPin, Star } from "lucide-react";
@@ -63,9 +64,18 @@ const PropertyOverview = ({ propertyId }: PropertyOverviewProps) => {
           </div>
           <div className="border-l border-gray-300 h-10"></div>
           <div>
-            <div className="text-sm text-gray-500">Square Feet</div>
+            <div className="text-sm text-gray-500">Area</div>
             <div className="font-semibold">
-              {property.squareFeet.toLocaleString()} sq ft
+              {property.areaSqm.toLocaleString()} m²
+            </div>
+          </div>
+          <div className="border-l border-gray-300 h-10"></div>
+          <div>
+            <div className="text-sm text-gray-500">Furnishing</div>
+            <div className="font-semibold">
+              {property.furnishing
+                ? FurnishingLabels[property.furnishing as FurnishingEnum]
+                : "Not specified"}
             </div>
           </div>
         </div>

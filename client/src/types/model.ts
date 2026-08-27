@@ -37,8 +37,9 @@ export type Property = {
   isParkingIncluded: boolean;
   beds: number;
   baths: number;
-  squareFeet: number;
+  areaSqm: number;
   propertyType: string;
+  furnishing: string | null;
   postedDate: string;
   averageRating: number | null;
   numberOfReviews: number | null;

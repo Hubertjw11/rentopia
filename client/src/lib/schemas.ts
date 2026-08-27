@@ -1,5 +1,10 @@
 import * as z from "zod";
-import { AmenityEnum, HighlightEnum, PropertyTypeEnum } from "@/lib/constants";
+import {
+  AmenityEnum,
+  FurnishingEnum,
+  HighlightEnum,
+  PropertyTypeEnum,
+} from "@/lib/constants";
 
 export const addressKey = (parts: {
   address?: string;
@@ -45,8 +50,9 @@ const propertyFields = z.object({
     .min(1, "Pick at least one highlight"),
   beds: z.coerce.number().positive().max(10).int(),
   baths: z.coerce.number().positive().max(10),
-  squareFeet: z.coerce.number().int().positive(),
+  areaSqm: z.coerce.number().int().positive(),
   propertyType: z.nativeEnum(PropertyTypeEnum),
+  furnishing: z.nativeEnum(FurnishingEnum),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   pinConfirmedFor: z.string(),

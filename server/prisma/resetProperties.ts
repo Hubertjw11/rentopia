@@ -1,11 +1,10 @@
-/**
- * Wipes every property and everything that hangs off one, then inserts the five
- * real Jakarta/Bandung listings. Tenants, managers and payment methods survive.
- *
- *   npx tsx prisma/resetProperties.ts            # dry run, prints what it would delete
- *   npx tsx prisma/resetProperties.ts --confirm  # actually does it
- */
-import { PrismaClient, Amenity, Highlight, PropertyType } from "@prisma/client";
+import {
+  PrismaClient,
+  Amenity,
+  Furnishing,
+  Highlight,
+  PropertyType,
+} from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import "dotenv/config";
 
@@ -46,8 +45,9 @@ type Listing = {
     isParkingIncluded: boolean;
     beds: number;
     baths: number;
-    squareFeet: number;
+    areaSqm: number;
     propertyType: PropertyType;
+    furnishing: Furnishing | null;
     postedDate: Date;
   };
 };
@@ -88,8 +88,9 @@ const LISTINGS: Listing[] = [
       isParkingIncluded: true,
       beds: 1,
       baths: 1,
-      squareFeet: 260,
+      areaSqm: 24,
       propertyType: PropertyType.Rooms,
+      furnishing: Furnishing.Full,
       postedDate: new Date("2026-08-26T03:27:44.588Z"),
     },
   },
@@ -133,8 +134,9 @@ const LISTINGS: Listing[] = [
       isParkingIncluded: true,
       beds: 2,
       baths: 1,
-      squareFeet: 700,
+      areaSqm: 65,
       propertyType: PropertyType.Apartment,
+      furnishing: null,
       postedDate: new Date("2026-08-26T03:36:06.567Z"),
     },
   },
@@ -177,8 +179,9 @@ const LISTINGS: Listing[] = [
       isParkingIncluded: true,
       beds: 3,
       baths: 2,
-      squareFeet: 1400,
+      areaSqm: 130,
       propertyType: PropertyType.Townhouse,
+      furnishing: Furnishing.Semi,
       postedDate: new Date("2026-08-26T03:55:07.945Z"),
     },
   },
@@ -226,8 +229,9 @@ const LISTINGS: Listing[] = [
       isParkingIncluded: true,
       beds: 3,
       baths: 3,
-      squareFeet: 1600,
+      areaSqm: 149,
       propertyType: PropertyType.Apartment,
+      furnishing: Furnishing.Full,
       postedDate: new Date("2026-08-26T06:13:40.729Z"),
     },
   },
@@ -269,8 +273,9 @@ const LISTINGS: Listing[] = [
       isParkingIncluded: true,
       beds: 2,
       baths: 2,
-      squareFeet: 1100,
+      areaSqm: 102,
       propertyType: PropertyType.Villa,
+      furnishing: null,
       postedDate: new Date("2026-08-26T06:27:29.662Z"),
     },
   },

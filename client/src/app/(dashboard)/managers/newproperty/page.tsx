@@ -31,7 +31,7 @@ const NewProperty = () => {
       highlights: [],
       beds: 1,
       baths: 1,
-      squareFeet: 1000,
+      areaSqm: 90,
       address: "",
       city: "",
       state: "",

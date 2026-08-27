@@ -6,6 +6,8 @@ import LocationPicker from "@/components/LocationPicker";
 import {
   AmenityEnum,
   AmenityIcons,
+  FurnishingEnum,
+  FurnishingLabels,
   HighlightEnum,
   HighlightIcons,
   PropertyTypeEnum,
@@ -72,7 +74,7 @@ const PropertyFormFields = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <CustomFormField name="beds" label="Number of Beds" type="number" />
         <CustomFormField name="baths" label="Number of Baths" type="number" />
-        <CustomFormField name="squareFeet" label="Square Feet" type="number" />
+        <CustomFormField name="areaSqm" label="Area (m²)" type="number" />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
         <CustomFormField
@@ -86,7 +88,7 @@ const PropertyFormFields = ({
           type="switch"
         />
       </div>
-      <div className="mt-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
         <CustomFormField
           name="propertyType"
           label="Property Type"
@@ -94,6 +96,15 @@ const PropertyFormFields = ({
           options={Object.keys(PropertyTypeEnum).map((type) => ({
             value: type,
             label: type,
+          }))}
+        />
+        <CustomFormField
+          name="furnishing"
+          label="Furnishing"
+          type="select"
+          options={Object.keys(FurnishingEnum).map((option) => ({
+            value: option,
+            label: FurnishingLabels[option as FurnishingEnum],
           }))}
         />
       </div>

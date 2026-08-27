@@ -42,6 +42,12 @@ enum Amenity {
   WiFi
 }
 
+enum Furnishing {
+  Full
+  Semi
+  Unfurnished
+}
+
 enum PropertyType {
   Rooms
   Tinyhouse
@@ -85,8 +91,9 @@ model Property {
   isParkingIncluded Boolean      @default(false)
   beds              Int
   baths             Float
-  squareFeet        Int
+  areaSqm           Int
   propertyType      PropertyType
+  furnishing        Furnishing?
   postedDate        DateTime     @default(now())
   averageRating     Float?       @default(0)
   numberOfReviews   Int?         @default(0)

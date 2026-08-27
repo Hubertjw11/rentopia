@@ -41,7 +41,8 @@ const EditPropertyForm = ({ property }: { property: Property }) => {
       highlights: property.highlights as PropertyEditFormData["highlights"],
       beds: property.beds,
       baths: property.baths,
-      squareFeet: property.squareFeet,
+      areaSqm: property.areaSqm,
+      furnishing: property.furnishing as PropertyEditFormData["furnishing"],
       propertyType:
         property.propertyType as PropertyEditFormData["propertyType"],
       latitude: property.location.coordinates.latitude,
