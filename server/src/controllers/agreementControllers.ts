@@ -22,6 +22,7 @@ const toAgreementData = (lease: any): AgreementData => ({
   },
   property: {
     name: lease.property.name,
+    rentalPeriod: lease.property.rentalPeriod,
     isPetsAllowed: lease.property.isPetsAllowed,
     isParkingIncluded: lease.property.isParkingIncluded,
     location: lease.property.location,

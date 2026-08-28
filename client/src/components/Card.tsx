@@ -1,5 +1,6 @@
 import { Bath, Bed, Heart, House, Star } from "lucide-react";
 import { formatIDRCompact } from "@/lib/utils";
+import { RentalPeriodEnum, RentalPeriodSuffix } from "@/lib/constants";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useState } from "react";
@@ -81,8 +82,11 @@ const Card = ({
             </span>
           </div>
           <p className="text-lg font-bold mb-3">
-            {formatIDRCompact(property.pricePerMonth)}{" "}
-            <span className="text-gray-600 text-base font-normal"> /month</span>
+            {formatIDRCompact(property.price)}{" "}
+            <span className="text-gray-600 text-base font-normal">
+              {" "}
+              {RentalPeriodSuffix[property.rentalPeriod as RentalPeriodEnum]}
+            </span>
           </p>
         </div>
         <hr />

@@ -3,6 +3,7 @@
 import Header from "@/components/Header";
 import PropertyFormFields from "@/components/PropertyFormFields";
 import { Form } from "@/components/ui/form";
+import { RentalPeriodEnum } from "@/lib/constants";
 import { PropertyFormData, propertySchema } from "@/lib/schemas";
 import { useCreatePropertyMutation, useGetAuthUserQuery } from "@/state/api";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,7 +22,8 @@ const NewProperty = () => {
     defaultValues: {
       name: "",
       description: "",
-      pricePerMonth: 3_500_000,
+      price: 3_500_000,
+      rentalPeriod: RentalPeriodEnum.Monthly,
       securityDeposit: 3_500_000,
       applicationFee: 250_000,
       isPetsAllowed: true,

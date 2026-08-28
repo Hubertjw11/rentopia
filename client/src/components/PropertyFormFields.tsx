@@ -11,6 +11,8 @@ import {
   HighlightEnum,
   HighlightIcons,
   PropertyTypeEnum,
+  RentalPeriodEnum,
+  RentalPeriodLabels,
 } from "@/lib/constants";
 import { formatEnumString } from "@/lib/utils";
 import { X } from "lucide-react";
@@ -47,11 +49,18 @@ const PropertyFormFields = ({
     {/* Fees */}
     <div className="space-y-6">
       <h2 className="text-lg font-semibold mb-4">Fees</h2>
-      <CustomFormField
-        name="pricePerMonth"
-        label="Price per Month"
-        type="number"
-      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <CustomFormField name="price" label="Price" type="number" />
+        <CustomFormField
+          name="rentalPeriod"
+          label="Charged per"
+          type="select"
+          options={Object.keys(RentalPeriodEnum).map((option) => ({
+            value: option,
+            label: RentalPeriodLabels[option as RentalPeriodEnum],
+          }))}
+        />
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <CustomFormField
           name="securityDeposit"

@@ -30,7 +30,9 @@ const EditPropertyForm = ({ property }: { property: Property }) => {
     defaultValues: {
       name: property.name,
       description: property.description,
-      pricePerMonth: property.pricePerMonth,
+      price: property.price,
+      rentalPeriod:
+        property.rentalPeriod as PropertyEditFormData["rentalPeriod"],
       securityDeposit: property.securityDeposit,
       applicationFee: property.applicationFee,
       isPetsAllowed: property.isPetsAllowed,

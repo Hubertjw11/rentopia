@@ -4,6 +4,7 @@ import {
   FurnishingEnum,
   HighlightEnum,
   PropertyTypeEnum,
+  RentalPeriodEnum,
 } from "@/lib/constants";
 
 export const addressKey = (parts: {
@@ -34,7 +35,8 @@ const pinIssue: { message: string; path: (string | number)[] } = {
 const propertyFields = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().min(1, "Description is required"),
-  pricePerMonth: z.coerce.number().positive(),
+  price: z.coerce.number().positive(),
+  rentalPeriod: z.nativeEnum(RentalPeriodEnum),
   securityDeposit: z.coerce.number().positive(),
   applicationFee: z.coerce.number().positive(),
   isPetsAllowed: z.boolean(),
@@ -52,7 +54,7 @@ const propertyFields = z.object({
   baths: z.coerce.number().positive().max(10),
   areaSqm: z.coerce.number().int().positive(),
   propertyType: z.nativeEnum(PropertyTypeEnum),
-  furnishing: z.nativeEnum(FurnishingEnum),
+  furnishing: z.nativeEnum(FurnishingEnum), 
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   pinConfirmedFor: z.string(),
@@ -88,6 +90,7 @@ export const applicationSchema = z.object({
   email: z.string().email("Invalid email address"),
   phoneNumber: z.string().min(10, "Phone number must be at least 10 digits"),
   message: z.string().optional(),
+  durationPeriods: z.coerce.number().int().positive().max(365),
 });
 
 export type ApplicationFormData = z.infer<typeof applicationSchema>;

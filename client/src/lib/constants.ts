@@ -92,6 +92,34 @@ export const HighlightIcons: Record<HighlightEnum, LucideIcon> = {
   QuietNeighborhood: VolumeX,
 };
 
+export enum RentalPeriodEnum {
+  Daily = "Daily",
+  Weekly = "Weekly",
+  Monthly = "Monthly",
+  Yearly = "Yearly",
+}
+
+export const RentalPeriodLabels: Record<RentalPeriodEnum, string> = {
+  Daily: "Daily",
+  Weekly: "Weekly",
+  Monthly: "Monthly",
+  Yearly: "Yearly",
+};
+
+export const RentalPeriodSuffix: Record<RentalPeriodEnum, string> = {
+  Daily: "/day",
+  Weekly: "/week",
+  Monthly: "/month",
+  Yearly: "/year",
+};
+
+export const RentalPeriodNounPlural: Record<RentalPeriodEnum, string> = {
+  Daily: "days",
+  Weekly: "weeks",
+  Monthly: "months",
+  Yearly: "years",
+};
+
 export enum FurnishingEnum {
   Full = "Full",
   Semi = "Semi",

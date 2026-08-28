@@ -22,6 +22,7 @@ import {
   Download,
   Pencil,
 } from "lucide-react";
+import { RentalPeriodEnum, RentalPeriodSuffix } from "@/lib/constants";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -118,7 +119,7 @@ const PropertyTenants = () => {
                 <TableRow>
                   <TableHead>Tenant</TableHead>
                   <TableHead>Lease Period</TableHead>
-                  <TableHead>Monthly Rent</TableHead>
+                  <TableHead>Rent</TableHead>
                   <TableHead>Current Month Status</TableHead>
                   <TableHead>Contact</TableHead>
                   <TableHead>Action</TableHead>
@@ -152,7 +153,16 @@ const PropertyTenants = () => {
                       </div>
                       <div>{new Date(lease.endDate).toLocaleDateString()}</div>
                     </TableCell>
-                    <TableCell>{formatIDR(lease.rent)}</TableCell>
+                    <TableCell>
+                      {formatIDR(lease.rent)}
+                      <span className="text-gray-500">
+                        {property
+                          ? RentalPeriodSuffix[
+                              property.rentalPeriod as RentalPeriodEnum
+                            ]
+                          : ""}
+                      </span>
+                    </TableCell>
                     <TableCell>
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-semibold ${

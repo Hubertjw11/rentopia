@@ -25,6 +25,8 @@ import {
   MapPin,
   User,
 } from "lucide-react";
+import { RentalPeriodEnum, RentalPeriodSuffix } from "@/lib/constants";
+import { nextDueDate } from "@/lib/rentalPeriod";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useDownload } from "@/hooks/useDownload";
@@ -39,12 +41,10 @@ const ResidenceCard = ({
   property: Property;
   currentLease: Lease;
 }) => {
-  const nextPaymentDate = (() => {
-    const today = new Date();
-    const next = new Date(currentLease.startDate);
-    while (next <= today) next.setMonth(next.getMonth() + 1);
-    return next;
-  })();
+  const nextPaymentDate = nextDueDate(
+    currentLease.startDate,
+    property.rentalPeriod as RentalPeriodEnum,
+  );
   const [imgSrc, setImgSrc] = useState(
     property.photoUrls?.[0] || "/placeholder.jpg",
   );
@@ -79,7 +79,9 @@ const ResidenceCard = ({
           </div>
           <div className="text-xl font-bold">
             {formatIDR(currentLease.rent)}{" "}
-            <span className="text-gray-500 text-sm font-normal">/ month</span>
+            <span className="text-gray-500 text-sm font-normal">
+              {RentalPeriodSuffix[property.rentalPeriod as RentalPeriodEnum]}
+            </span>
           </div>
         </div>
       </div>

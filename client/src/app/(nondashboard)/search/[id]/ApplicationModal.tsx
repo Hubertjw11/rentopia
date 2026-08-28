@@ -7,8 +7,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
+import { RentalPeriodEnum, RentalPeriodNounPlural } from "@/lib/constants";
 import { ApplicationFormData, applicationSchema } from "@/lib/schemas";
-import { useCreateApplicationMutation, useGetAuthUserQuery } from "@/state/api";
+import {
+  useCreateApplicationMutation,
+  useGetAuthUserQuery,
+  useGetPropertyQuery,
+} from "@/state/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { Resolver, useForm } from "react-hook-form";
@@ -20,6 +25,8 @@ const ApplicationModal = ({
 }: ApplicationModalProps) => {
   const [createApplication] = useCreateApplicationMutation();
   const { data: authUser } = useGetAuthUserQuery();
+  const { data: property } = useGetPropertyQuery(propertyId);
+  const period = (property?.rentalPeriod ?? "Monthly") as RentalPeriodEnum;
 
   const form = useForm<ApplicationFormData>({
     resolver: zodResolver(
@@ -30,6 +37,7 @@ const ApplicationModal = ({
       email: "",
       phoneNumber: "",
       message: "",
+      durationPeriods: 1,
     },
   });
 
@@ -77,6 +85,12 @@ const ApplicationModal = ({
                 label="Phone Number"
                 type="text"
                 placeholder="Enter your phone number"
+              />
+              <CustomFormField
+                name="durationPeriods"
+                label={`How many ${RentalPeriodNounPlural[period]}?`}
+                type="number"
+                placeholder={`Number of ${RentalPeriodNounPlural[period]} you want to rent for`}
               />
               <CustomFormField
                 name="message"

@@ -6,16 +6,24 @@ import {
   Furnishing,
   Highlight,
   PropertyType,
+  RentalPeriod,
 } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { uploadFile } from "../lib/s3";
 import { wktToGeoJSON } from "@terraformer/wkt";
 import axios from "axios";
 import { parseId, parseNumber } from "../lib/params";
+import { MONTHLY_FACTOR } from "../lib/rentalPeriod";
 
 const DEFAULT_PROPERTY_LIMIT = 12;
 const MAX_PROPERTY_LIMIT = 50;
 const MAX_MAP_MARKERS = 1000;
+
+const monthlyPrice = Prisma.sql`(p.price * CASE p."rentalPeriod"
+  WHEN 'Daily' THEN ${MONTHLY_FACTOR.Daily}::numeric
+  WHEN 'Weekly' THEN ${MONTHLY_FACTOR.Weekly}::numeric
+  WHEN 'Yearly' THEN ${MONTHLY_FACTOR.Yearly}::numeric
+  ELSE 1 END)`;
 
 const propertySource = Prisma.sql`
   FROM "Property" p
@@ -97,12 +105,12 @@ const buildPropertyWhere = (query: Request["query"]): Prisma.Sql => {
 
   const priceMinNum = parseNumber(priceMin);
   if (priceMinNum !== null) {
-    whereConditions.push(Prisma.sql`p."pricePerMonth" >= ${priceMinNum}`);
+    whereConditions.push(Prisma.sql`${monthlyPrice} >= ${priceMinNum}`);
   }
 
   const priceMaxNum = parseNumber(priceMax);
   if (priceMaxNum !== null) {
-    whereConditions.push(Prisma.sql`p."pricePerMonth" <= ${priceMaxNum}`);
+    whereConditions.push(Prisma.sql`${monthlyPrice} <= ${priceMaxNum}`);
   }
 
   const bedsNum = beds !== "any" ? parseNumber(beds) : null;
@@ -241,7 +249,8 @@ export const getPropertyMarkers = async (
       SELECT
         p.id,
         p.name,
-        p."pricePerMonth",
+        p.price,
+        p."rentalPeriod",
         ST_X(l."coordinates"::geometry) AS longitude,
         ST_Y(l."coordinates"::geometry) AS latitude
       ${propertySource}
@@ -318,7 +327,8 @@ type PropertyInput = {
   postalCode: string;
   amenities: Amenity[];
   highlights: Highlight[];
-  pricePerMonth: number;
+  price: number;
+  rentalPeriod: RentalPeriod;
   securityDeposit: number;
   applicationFee: number;
   beds: number;
@@ -383,6 +393,14 @@ const parsePropertyBody = (
     return { ok: false, message: "Unknown property type" };
   }
 
+  const rentalPeriod = text(body.rentalPeriod);
+  if (
+    rentalPeriod === null ||
+    !(Object.values(RentalPeriod) as string[]).includes(rentalPeriod)
+  ) {
+    return { ok: false, message: "Unknown rental period" };
+  }
+
   const furnishing = text(body.furnishing);
   if (
     furnishing !== null &&
@@ -391,7 +409,7 @@ const parsePropertyBody = (
     return { ok: false, message: "Unknown furnishing" };
   }
 
-  const pricePerMonth = parseNumber(body.pricePerMonth);
+  const price = parseNumber(body.price);
   const securityDeposit = parseNumber(body.securityDeposit);
   const applicationFee = parseNumber(body.applicationFee);
   const beds = parseNumber(body.beds);
@@ -400,7 +418,7 @@ const parsePropertyBody = (
 
   const positive = (n: number | null) => n !== null && n > 0;
   if (
-    !positive(pricePerMonth) ||
+    !positive(price) ||
     !positive(securityDeposit) ||
     !positive(applicationFee) ||
     !positive(beds) ||
@@ -435,7 +453,8 @@ const parsePropertyBody = (
       postalCode,
       amenities,
       highlights,
-      pricePerMonth: pricePerMonth!,
+      price: price!,
+      rentalPeriod: rentalPeriod as RentalPeriod,
       securityDeposit: securityDeposit!,
       applicationFee: applicationFee!,
       beds: beds!,
@@ -570,7 +589,8 @@ export const createProperty = async (
           highlights: input.highlights,
           isPetsAllowed: input.isPetsAllowed,
           isParkingIncluded: input.isParkingIncluded,
-          pricePerMonth: input.pricePerMonth,
+          price: input.price,
+          rentalPeriod: input.rentalPeriod,
           securityDeposit: input.securityDeposit,
           applicationFee: input.applicationFee,
           beds: input.beds,
@@ -677,7 +697,8 @@ export const updateProperty = async (
           highlights: input.highlights,
           isPetsAllowed: input.isPetsAllowed,
           isParkingIncluded: input.isParkingIncluded,
-          pricePerMonth: input.pricePerMonth,
+          price: input.price,
+          rentalPeriod: input.rentalPeriod,
           securityDeposit: input.securityDeposit,
           applicationFee: input.applicationFee,
           beds: input.beds,

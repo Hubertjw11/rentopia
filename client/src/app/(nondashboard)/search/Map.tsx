@@ -2,6 +2,7 @@
 import React, { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { RentalPeriodEnum, RentalPeriodSuffix } from "@/lib/constants";
 import { useAppSelector } from "@/state/redux";
 import { useGetPropertyMarkersQuery } from "@/state/api";
 import { PropertyMarker } from "@/types/model";
@@ -84,8 +85,8 @@ const createPropertyMarker = (property: PropertyMarker, map: mapboxgl.Map) => {
             <div>
                 <a href="/search/${property.id}" target="_blank" class="marker-popup-title">${property.name}</a>
                 <p class="marker-popup-price">
-                    ${formatIDRCompact(property.pricePerMonth)}
-                    <span class="marker-popup-price-unit"> / month</span>
+                    ${formatIDRCompact(property.price)}
+                    <span class="marker-popup-price-unit"> ${RentalPeriodSuffix[property.rentalPeriod as RentalPeriodEnum]}</span>
                 </p>
             </div>
         </div>

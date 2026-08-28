@@ -1,4 +1,10 @@
-import { FurnishingEnum, FurnishingLabels } from "@/lib/constants";
+import {
+  FurnishingEnum,
+  FurnishingLabels,
+  RentalPeriodEnum,
+  RentalPeriodLabels,
+  RentalPeriodSuffix,
+} from "@/lib/constants";
 import { formatIDR } from "@/lib/utils";
 import { useGetPropertyQuery } from "@/state/api";
 import { MapPin, Star } from "lucide-react";
@@ -47,9 +53,18 @@ const PropertyOverview = ({ propertyId }: PropertyOverviewProps) => {
       <div className="border border-primary-200 rounded-xl p-6 mb-6">
         <div className="flex justify-between items-center gap-4 px-5">
           <div>
-            <div className="text-sm text-gray-500">Monthly Rent</div>
+            <div className="text-sm text-gray-500">
+              Rent (
+              {RentalPeriodLabels[
+                property.rentalPeriod as RentalPeriodEnum
+              ].toLowerCase()}
+              )
+            </div>
             <div className="font-semibold">
-              {formatIDR(property.pricePerMonth)}
+              {formatIDR(property.price)}
+              <span className="text-sm font-normal text-gray-500">
+                {RentalPeriodSuffix[property.rentalPeriod as RentalPeriodEnum]}
+              </span>
             </div>
           </div>
           <div className="border-l border-gray-300 h-10"></div>

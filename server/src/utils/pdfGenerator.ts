@@ -1,4 +1,10 @@
 import PDFDocument from "pdfkit";
+import { RentalPeriod } from "@prisma/client";
+import {
+  PERIOD_ADJECTIVE,
+  PERIOD_ADVERB,
+  PERIOD_NOUN,
+} from "../lib/rentalPeriod";
 
 /** Brand palette — mirrors the values in client globals.css */
 const DARK = "#27272a";
@@ -16,6 +22,7 @@ export type AgreementData = {
   };
   property: {
     name: string;
+    rentalPeriod: RentalPeriod;
     isPetsAllowed: boolean;
     isParkingIncluded: boolean;
     location: {
@@ -175,7 +182,13 @@ export const renderAgreement = (
   sectionTitle(doc, "Term and Payment");
   const termsY = doc.y;
   labelledRow(doc, "Lease Start", longDate(lease.startDate), left, colWidth);
-  labelledRow(doc, "Monthly Rent", money(lease.rent), left, colWidth);
+  labelledRow(
+    doc,
+    `${PERIOD_ADJECTIVE[property.rentalPeriod]} Rent`,
+    money(lease.rent),
+    left,
+    colWidth,
+  );
   const afterTerms = doc.y;
 
   doc.y = termsY;
@@ -193,7 +206,7 @@ export const renderAgreement = (
     ],
     [
       "Rent",
-      `Rent of ${money(lease.rent)} is payable monthly, in advance, on or before the first day of each calendar month. Payments are made through the Rentopia platform using the Tenant's registered payment method.`,
+      `Rent of ${money(lease.rent)} is payable ${PERIOD_ADVERB[property.rentalPeriod]}, in advance, on or before the first day of each rental ${PERIOD_NOUN[property.rentalPeriod]}. Payments are made through the Rentopia platform using the Tenant's registered payment method.`,
     ],
     [
       "Security Deposit",

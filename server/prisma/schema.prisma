@@ -42,6 +42,13 @@ enum Amenity {
   WiFi
 }
 
+enum RentalPeriod {
+  Daily
+  Weekly
+  Monthly
+  Yearly
+}
+
 enum Furnishing {
   Full
   Semi
@@ -81,7 +88,8 @@ model Property {
   id                Int          @id @default(autoincrement())
   name              String
   description       String
-  pricePerMonth     Float
+  price             Float
+  rentalPeriod      RentalPeriod @default(Monthly)
   securityDeposit   Float
   applicationFee    Float
   photoUrls         String[]
@@ -161,6 +169,7 @@ model Application {
   email           String
   phoneNumber     String
   message         String?
+  durationPeriods Int?
   leaseId         Int?              @unique
 
   property Property @relation(fields: [propertyId], references: [id])

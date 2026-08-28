@@ -178,7 +178,7 @@ const FiltersFull = () => {
 
         {/* Price Range */}
         <div>
-          <h4 className="font-bold mb-2">Price Range (Monthly)</h4>
+          <h4 className="font-bold mb-2">Price Range (per month)</h4>
           <Slider
             min={0}
             max={50_000_000}

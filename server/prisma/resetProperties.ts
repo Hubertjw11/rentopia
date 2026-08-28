@@ -4,6 +4,7 @@ import {
   Furnishing,
   Highlight,
   PropertyType,
+  RentalPeriod,
 } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import "dotenv/config";
@@ -35,7 +36,8 @@ type Listing = {
   property: {
     name: string;
     description: string;
-    pricePerMonth: number;
+    price: number;
+    rentalPeriod: RentalPeriod;
     securityDeposit: number;
     applicationFee: number;
     photoUrls: string[];
@@ -67,7 +69,8 @@ const LISTINGS: Listing[] = [
       name: "Kemanggisan Studio Near Campus",
       description:
         "Furnished studio a short walk from campus. Air-conditioned with fast internet included, private bathroom, and a small kitchenette. Suited to students or a single professional.",
-      pricePerMonth: 2500000,
+      price: 2500000,
+      rentalPeriod: RentalPeriod.Monthly,
       securityDeposit: 2500000,
       applicationFee: 150000,
       photoUrls: [
@@ -108,7 +111,8 @@ const LISTINGS: Listing[] = [
       name: "Sudirman Park 2BR Apartment",
       description:
         "Two-bedroom unit on a high floor with a city view. Building has a pool and gym, and the MRT is a five-minute walk. Two months' deposit, minimum twelve-month term.",
-      pricePerMonth: 8500000,
+      price: 8500000,
+      rentalPeriod: RentalPeriod.Monthly,
       securityDeposit: 17000000,
       applicationFee: 250000,
       photoUrls: [
@@ -154,7 +158,8 @@ const LISTINGS: Listing[] = [
       name: "Bintaro Sector 9 Family House",
       description:
         "Three-bedroom house in a quiet gated cluster with a small garden and carport for two. Recently repainted, unfurnished apart from wardrobes and kitchen units. Pets considered.",
-      pricePerMonth: 12000000,
+      price: 12000000,
+      rentalPeriod: RentalPeriod.Monthly,
       securityDeposit: 12000000,
       applicationFee: 300000,
       photoUrls: [
@@ -199,7 +204,8 @@ const LISTINGS: Listing[] = [
       name: "The Capital Residence 3BR",
       description:
         "Fully furnished three-bedroom in the central business district. Concierge, 24-hour security, two parking bays. Walking distance to offices and the mall.",
-      pricePerMonth: 35000000,
+      price: 35000000,
+      rentalPeriod: RentalPeriod.Monthly,
       securityDeposit: 70000000,
       applicationFee: 500000,
       photoUrls: [
@@ -249,7 +255,8 @@ const LISTINGS: Listing[] = [
       name: "Dago Hillside House",
       description:
         "Two-bedroom house on the northern slope with a view over the valley. Cool climate, no air conditioning needed. Small terrace and garden, quiet residential street.",
-      pricePerMonth: 5500000,
+      price: 5500000,
+      rentalPeriod: RentalPeriod.Monthly,
       securityDeposit: 5500000,
       applicationFee: 200000,
       photoUrls: [
@@ -294,7 +301,7 @@ const report = async () => {
     notifications,
   ] = await Promise.all([
     prisma.property.findMany({
-      select: { id: true, name: true, pricePerMonth: true },
+      select: { id: true, name: true, price: true },
       orderBy: { id: "asc" },
     }),
     prisma.location.count(),
@@ -309,7 +316,7 @@ const report = async () => {
 
   console.log(`\nProperties currently in this database (${properties.length}):`);
   for (const p of properties) {
-    console.log(`  #${p.id}  ${p.name}  —  ${p.pricePerMonth}`);
+    console.log(`  #${p.id}  ${p.name}  —  ${p.price}`);
   }
   console.log("\nRows that would be deleted along with them:");
   console.log(`  Location       ${locations}`);

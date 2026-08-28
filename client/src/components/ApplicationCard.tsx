@@ -1,5 +1,6 @@
 import { formatIDR } from "@/lib/utils";
 import { Mail, MapPin, PhoneCall } from "lucide-react";
+import { RentalPeriodEnum, RentalPeriodSuffix } from "@/lib/constants";
 import Image from "next/image";
 import React, { useState } from "react";
 
@@ -47,8 +48,14 @@ const ApplicationCard = ({
               </div>
             </div>
             <div className="text-xl font-semibold">
-              {formatIDR(application.property.pricePerMonth)}{" "}
-              <span className="text-sm font-normal">/ month</span>
+              {formatIDR(application.property.price)}{" "}
+              <span className="text-sm font-normal">
+                {
+                  RentalPeriodSuffix[
+                    application.property.rentalPeriod as RentalPeriodEnum
+                  ]
+                }
+              </span>
             </div>
           </div>
         </div>

@@ -27,7 +27,8 @@ export type Property = {
   id: number;
   name: string;
   description: string;
-  pricePerMonth: number;
+  price: number;
+  rentalPeriod: string;
   securityDeposit: number;
   applicationFee: number;
   photoUrls: string[];
@@ -75,6 +76,7 @@ export type Application = {
   email: string;
   phoneNumber: string;
   message: string | null;
+  durationPeriods: number | null;
   leaseId: number | null;
   property: Property & { address: string };
   tenant: Tenant;
@@ -146,7 +148,8 @@ export type PropertyPage = {
 export type PropertyMarker = {
   id: number;
   name: string;
-  pricePerMonth: number;
+  price: number;
+  rentalPeriod: string;
   longitude: number;
   latitude: number;
 };

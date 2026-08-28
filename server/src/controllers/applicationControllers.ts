@@ -1,14 +1,15 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 import { createNotification } from "../lib/notify";
-import { parseId } from "../lib/params";
+import { RentalPeriod } from "@prisma/client";
+import { parseId, parseNumber } from "../lib/params";
+import { addPeriods, resolvePeriods } from "../lib/rentalPeriod";
 
 export const listApplications = async (
   req: Request<{ cognitoId: string }>,
   res: Response,
 ): Promise<void> => {
   try {
-    // Scope is derived from the verified token, never from the query string.
     const { id, role } = req.user!;
     const whereClause =
       role.toLowerCase() === "manager"
@@ -29,13 +30,17 @@ export const listApplications = async (
       },
     });
 
-    function calculateNextPaymentDate(startDate: Date): Date {
+    function calculateNextPaymentDate(
+      startDate: Date,
+      period: RentalPeriod,
+    ): Date {
       const today = new Date();
-      const nextPaymentDate = new Date(startDate);
-      while (nextPaymentDate <= today) {
-        nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
+      let periods = 0;
+      let next = new Date(startDate);
+      while (next <= today) {
+        next = addPeriods(startDate, period, ++periods);
       }
-      return nextPaymentDate;
+      return next;
     }
 
     const formattedApplications = applications.map((app) => ({
@@ -48,7 +53,10 @@ export const listApplications = async (
       lease: app.lease
         ? {
             ...app.lease,
-            nextPaymentDate: calculateNextPaymentDate(app.lease.startDate),
+            nextPaymentDate: calculateNextPaymentDate(
+              app.lease.startDate,
+              app.property.rentalPeriod,
+            ),
           }
         : null,
     }));
@@ -65,8 +73,15 @@ export const createApplication = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { applicationDate, propertyId, name, email, phoneNumber, message } =
-      req.body;
+    const {
+      applicationDate,
+      propertyId,
+      name,
+      email,
+      phoneNumber,
+      message,
+      durationPeriods,
+    } = req.body;
 
     const parsedDate = new Date(applicationDate);
     if (isNaN(parsedDate.getTime())) {
@@ -82,7 +97,12 @@ export const createApplication = async (
 
     const property = await prisma.property.findUnique({
       where: { id: parsedPropertyId },
-      select: { id: true, name: true, managerCognitoId: true },
+      select: {
+        id: true,
+        name: true,
+        managerCognitoId: true,
+        rentalPeriod: true,
+      },
     });
 
     if (!property) {
@@ -90,7 +110,11 @@ export const createApplication = async (
       return;
     }
 
-    // No lease yet — a lease only exists once a manager approves.
+    const requestedPeriods = resolvePeriods(
+      property.rentalPeriod,
+      parseNumber(durationPeriods),
+    );
+
     const newApplication = await prisma.$transaction(async (tx) => {
       const application = await tx.application.create({
         data: {
@@ -100,6 +124,7 @@ export const createApplication = async (
           email,
           phoneNumber,
           message,
+          durationPeriods: requestedPeriods,
           property: {
             connect: { id: parsedPropertyId },
           },
@@ -172,13 +197,19 @@ export const updateApplicationStatus = async (
 
     if (status === "Approved") {
       await prisma.$transaction(async (tx) => {
+        const startDate = new Date();
         const newLease = await tx.lease.create({
           data: {
-            startDate: new Date(),
-            endDate: new Date(
-              new Date().setFullYear(new Date().getFullYear() + 1),
+            startDate,
+            endDate: addPeriods(
+              startDate,
+              application.property.rentalPeriod,
+              resolvePeriods(
+                application.property.rentalPeriod,
+                application.durationPeriods,
+              ),
             ),
-            rent: application.property.pricePerMonth,
+            rent: application.property.price, 
             deposit: application.property.securityDeposit,
             propertyId: application.propertyId,
             tenantCognitoId: application.tenantCognitoId,
@@ -226,7 +257,6 @@ export const updateApplicationStatus = async (
       });
     }
 
-    // Respond with the updated application details
     const updatedApplication = await prisma.application.findUnique({
       where: { id: applicationId },
       include: {
