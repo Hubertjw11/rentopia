@@ -286,6 +286,39 @@ const LISTINGS: Listing[] = [
       postedDate: new Date("2026-08-26T06:27:29.662Z"),
     },
   },
+  {
+    location: {
+      address: "Jl. Kemanggisan Raya No.95, RT.5/RW.7",
+      city: "West Jakarta",
+      state: "DKI Jakarta",
+      country: "Indonesia",
+      postalCode: "11480",
+      lng: 106.78528748783987,
+      lat: -6.192256399074722,
+    },
+    property: {
+      name: "RedDoorz @ Kemanggisan Raya",
+      description:
+        "Comfortable budget hotel located in West Jakarta, offering clean rooms, free parking, and convenient access to Central Park Mall and Tanah Abang market area.",
+      price: 300000,
+      rentalPeriod: RentalPeriod.Daily,
+      securityDeposit: 500000,
+      applicationFee: 50000,
+      photoUrls: [
+        "https://re-s3-images.s3.us-east-1.amazonaws.com/properties/e81cfb01-6068-48d7-9d26-672bd0e4df98-rddorz.jpg",
+      ],
+      amenities: [Amenity.WiFi],
+      highlights: [Highlight.SmokeFree, Highlight.SatelliteTV],
+      isPetsAllowed: true,
+      isParkingIncluded: true,
+      beds: 1,
+      baths: 1,
+      areaSqm: 18,
+      propertyType: PropertyType.Rooms,
+      furnishing: Furnishing.Semi,
+      postedDate: new Date("2026-08-28T04:16:20.860Z"),
+    },
+  },
 ];
 
 const report = async () => {
@@ -390,7 +423,7 @@ async function main() {
     { timeout: 120_000, maxWait: 15_000 },
   );
 
-  console.log("\nDone. Five listings are live.\n");
+  console.log("\nDone. Six listings are live.\n");
 }
 
 main()
