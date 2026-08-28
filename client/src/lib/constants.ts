@@ -113,6 +113,13 @@ export const RentalPeriodSuffix: Record<RentalPeriodEnum, string> = {
   Yearly: "/year",
 };
 
+export const RentalPeriodNoun: Record<RentalPeriodEnum, string> = {
+  Daily: "night",
+  Weekly: "week",
+  Monthly: "month",
+  Yearly: "year",
+};
+
 export const RentalPeriodNounPlural: Record<RentalPeriodEnum, string> = {
   Daily: "days",
   Weekly: "weeks",

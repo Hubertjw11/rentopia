@@ -9,6 +9,7 @@ import { Conversation } from "@/types/model";
 import { Mail, MessageSquare, Phone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
+import CostOfMove from "./CostOfMove";
 
 const ContactWidget = ({ onOpenModal, propertyId }: ContactWidgetProps) => {
   const { data: authUser } = useGetAuthUserQuery();
@@ -81,6 +82,8 @@ const ContactWidget = ({ onOpenModal, propertyId }: ContactWidgetProps) => {
           {manager.email}
         </a>
       )}
+
+      {property && <CostOfMove property={property} />}
 
       <Button
         className="w-full bg-primary-700 text-white hover:bg-primary-600"
