@@ -16,6 +16,7 @@ export type Manager = {
   name: string;
   email: string;
   phoneNumber: string;
+  verifiedEmail: string | null;
 };
 
 export type Tenant = Manager & {

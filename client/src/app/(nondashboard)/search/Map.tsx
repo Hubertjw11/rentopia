@@ -28,7 +28,7 @@ const Map = () => {
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/hubertjw11/cmrufaqjn00d101sc1a96e286",
-      center: [-74.5, 40],
+      center: [106.8272, -6.1754],
       zoom: 9,
     });
     mapRef.current = map;

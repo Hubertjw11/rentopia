@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { wktToGeoJSON } from "@terraformer/wkt";
 import { parseId } from "../lib/params";
+import { verifiedEmailFor } from "../lib/verifiedEmail";
 
 export const getTenant = async (
   req: Request<{ cognitoId: string }>,
@@ -17,11 +18,22 @@ export const getTenant = async (
       },
     });
 
-    if (tenant) {
-      res.json(tenant);
-    } else {
+    if (!tenant) {
       res.status(404).json({ message: "Tenant not found" });
+      return;
     }
+
+    const verifiedEmail = verifiedEmailFor(req.user);
+    if (verifiedEmail !== tenant.verifiedEmail) {
+      await prisma.tenant.update({
+        where: { cognitoId },
+        data: { verifiedEmail },
+      });
+      res.json({ ...tenant, verifiedEmail });
+      return;
+    }
+
+    res.json(tenant);
   } catch (error) {
     console.error("Error retrieving tenant:", error);
     res.status(500).json({ message: "Error retrieving tenant" });
@@ -42,6 +54,7 @@ export const createTenant = async (
         name,
         email,
         phoneNumber,
+        verifiedEmail: verifiedEmailFor(req.user),
       },
     });
 

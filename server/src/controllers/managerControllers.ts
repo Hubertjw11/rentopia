@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { wktToGeoJSON } from "@terraformer/wkt";
+import { verifiedEmailFor } from "../lib/verifiedEmail";
 
 export const getManager = async (
   req: Request<{ cognitoId: string }>,
@@ -13,11 +14,23 @@ export const getManager = async (
       where: { cognitoId },
     });
 
-    if (manager) {
-      res.json(manager);
-    } else {
+    if (!manager) {
       res.status(404).json({ message: "Manager not found" });
+      return;
     }
+
+    const verifiedEmail = verifiedEmailFor(req.user);
+    if (verifiedEmail !== manager.verifiedEmail) {
+      res.json(
+        await prisma.manager.update({
+          where: { cognitoId },
+          data: { verifiedEmail },
+        }),
+      );
+      return;
+    }
+
+    res.json(manager);
   } catch (error) {
     console.error("Error retrieving manager:", error);
     res.status(500).json({ message: "Error retrieving manager" });
@@ -38,6 +51,7 @@ export const createManager = async (
         name,
         email,
         phoneNumber,
+        verifiedEmail: verifiedEmailFor(req.user),
       },
     });
 

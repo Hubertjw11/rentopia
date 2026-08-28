@@ -6,7 +6,7 @@ import {
   useStartConversationMutation,
 } from "@/state/api";
 import { Conversation } from "@/types/model";
-import { Mail, MessageSquare, Phone } from "lucide-react";
+import { BadgeCheck, Mail, MessageSquare, Phone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
 import CostOfMove from "./CostOfMove";
@@ -17,6 +17,12 @@ const ContactWidget = ({ onOpenModal, propertyId }: ContactWidgetProps) => {
   const router = useRouter();
 
   const manager = property?.manager;
+
+  const emailIsVerified =
+    !!manager?.email &&
+    !!manager?.verifiedEmail &&
+    manager.email.trim().toLowerCase() ===
+      manager.verifiedEmail.trim().toLowerCase();
 
   const [startConversation, { isLoading: starting }] =
     useStartConversationMutation();
@@ -74,13 +80,21 @@ const ContactWidget = ({ onOpenModal, propertyId }: ContactWidgetProps) => {
       </div>
 
       {manager?.email && (
-        <a
-          href={`mailto:${manager.email}`}
-          className="flex items-center gap-2 mb-4 text-sm text-primary-600 hover:underline break-all"
-        >
-          <Mail className="w-4 h-4 shrink-0" />
-          {manager.email}
-        </a>
+        <div className="mb-4">
+          <a
+            href={`mailto:${manager.email}`}
+            className="flex items-center gap-2 text-sm text-primary-600 hover:underline break-all"
+          >
+            <Mail className="w-4 h-4 shrink-0" />
+            {manager.email}
+          </a>
+          {emailIsVerified && (
+            <span className="mt-1 flex items-center gap-1 text-xs font-medium text-green-700">
+              <BadgeCheck className="w-3.5 h-3.5 shrink-0" />
+              Email address confirmed
+            </span>
+          )}
+        </div>
       )}
 
       {property && <CostOfMove property={property} />}
@@ -118,6 +132,10 @@ const ContactWidget = ({ onOpenModal, propertyId }: ContactWidgetProps) => {
         <div className="text-primary-600">
           Open by appointment on Monday - Sunday
         </div>
+        <p className="mt-3 text-xs text-primary-500">
+          Rentopia confirms email addresses only. Phone numbers, identity and
+          property ownership are not checked.
+        </p>
       </div>
     </div>
   );

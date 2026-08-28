@@ -124,7 +124,7 @@ model Manager {
   name        String
   email       String
   phoneNumber String
-
+  verifiedEmail String?
   managedProperties Property[]
   conversations     Conversation[]
 }
@@ -135,7 +135,7 @@ model Tenant {
   name        String
   email       String
   phoneNumber String
-
+  verifiedEmail String?
   stripeCustomerId String?         @unique
   paymentMethods   PaymentMethod[]
 

@@ -5,6 +5,8 @@ import { JwksClient } from "jwks-rsa";
 interface DecodedToken extends JwtPayload {
   sub: string;
   "custom:role"?: string;
+  email?: string;
+  email_verified?: boolean | string;
 }
 
 declare global {
@@ -13,6 +15,8 @@ declare global {
       user?: {
         id: string;
         role: string;
+        email: string | null;
+        emailVerified: boolean;
       };
     }
   }
@@ -63,6 +67,9 @@ export const authMiddleware = (allowedRoles: string[]) => {
       req.user = {
         id: decoded.sub,
         role: userRole,
+        email: typeof decoded.email === "string" ? decoded.email : null,
+        emailVerified:
+          decoded.email_verified === true || decoded.email_verified === "true",
       };
 
       const hasAccess = allowedRoles.includes(userRole.toLowerCase());
