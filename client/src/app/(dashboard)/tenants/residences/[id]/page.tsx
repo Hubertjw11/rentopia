@@ -26,6 +26,7 @@ import {
   User,
 } from "lucide-react";
 import { RentalPeriodEnum, RentalPeriodSuffix } from "@/lib/constants";
+import { formatDate, formatMonthYear } from "@/lib/datetime";
 import { nextDueDate } from "@/lib/rentalPeriod";
 import Image from "next/image";
 import { useParams } from "next/navigation";
@@ -92,21 +93,21 @@ const ResidenceCard = ({
           <div className="xl:flex">
             <div className="text-gray-500 mr-2">Start Date: </div>
             <div className="font-semibold">
-              {new Date(currentLease.startDate).toLocaleDateString()}
+              {formatDate(currentLease.startDate)}
             </div>
           </div>
           <div className="border-[0.5px] border-primary-300 h-4" />
           <div className="xl:flex">
             <div className="text-gray-500 mr-2">End Date: </div>
             <div className="font-semibold">
-              {new Date(currentLease.endDate).toLocaleDateString()}
+              {formatDate(currentLease.endDate)}
             </div>
           </div>
           <div className="border-[0.5px] border-primary-300 h-4" />
           <div className="xl:flex">
             <div className="text-gray-500 mr-2">Next Payment: </div>
             <div className="font-semibold">
-              {nextPaymentDate.toLocaleDateString()}
+              {formatDate(nextPaymentDate)}
             </div>
           </div>
         </div>
@@ -170,10 +171,7 @@ const BillingHistory = ({ payments }: { payments: Payment[] }) => {
                   <div className="flex items-center">
                     <FileText className="w-4 h-4 mr-2" />
                     Invoice #{payment.id} -{" "}
-                    {new Date(payment.paymentDate).toLocaleString("default", {
-                      month: "short",
-                      year: "numeric",
-                    })}
+                    {formatMonthYear(payment.paymentDate)}
                   </div>
                 </TableCell>
                 <TableCell>
@@ -191,7 +189,7 @@ const BillingHistory = ({ payments }: { payments: Payment[] }) => {
                   </span>
                 </TableCell>
                 <TableCell>
-                  {new Date(payment.paymentDate).toLocaleDateString()}
+                  {formatDate(payment.paymentDate)}
                 </TableCell>
                 <TableCell>{formatIDR(payment.amountPaid)}</TableCell>
                 <TableCell>

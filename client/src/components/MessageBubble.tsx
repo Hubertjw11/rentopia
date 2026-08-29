@@ -12,9 +12,7 @@ import {
 } from "./ui/dropdown-menu";
 import { Message } from "@/types/model";
 import Highlight from "./Highlight";
-
-const timeLabel = (iso: string) =>
-  new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+import { formatTime } from "@/lib/datetime";
 
 const LONG_PRESS_MS = 500;
 
@@ -231,7 +229,7 @@ const MessageBubble = ({
           </button>
         )}
 
-                {message.attachment &&
+        {message.attachment &&
           (message.attachment.type.startsWith("image/") ? (
             <button
               type="button"
@@ -286,7 +284,7 @@ const MessageBubble = ({
             mine ? "text-primary-300" : "text-gray-500"
           }`}
         >
-          {timeLabel(message.createdAt)}
+          {formatTime(message.createdAt)}
           {mine && message.readAt && !message.isDeleted && (
             <>
               <CheckCheck className="h-3 w-3" />

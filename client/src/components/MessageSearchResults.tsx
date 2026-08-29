@@ -3,14 +3,7 @@
 import React from "react";
 import { MessageSearchHit } from "@/types/model";
 import Highlight from "./Highlight";
-
-const hitLabel = (iso: string) =>
-  new Date(iso).toLocaleString([], {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+import { formatShortDateTime } from "@/lib/datetime";
 
 type MessageSearchResultsProps = {
   term: string;
@@ -81,7 +74,7 @@ const MessageSearchResults = ({
             <Highlight text={hit.body} term={term} />
           </div>
           <div className="mt-0.5 text-[10px] text-gray-400">
-            {hitLabel(hit.createdAt)}
+            {formatShortDateTime(hit.createdAt)}
           </div>
         </button>
       ))}

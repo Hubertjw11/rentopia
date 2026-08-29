@@ -4,6 +4,7 @@ import React, { useEffect } from "react";
 import Image from "next/image";
 import { ArrowLeft, CornerUpLeft, Pencil, Trash2 } from "lucide-react";
 import { Message } from "@/types/model";
+import { formatDateTime } from "@/lib/datetime";
 
 type ImageViewerProps = {
   message: Message;
@@ -50,13 +51,7 @@ const ImageViewer = ({
             {mine ? "You" : senderName}
           </div>
           <div className="text-[10px] text-white/60">
-            {new Date(message.createdAt).toLocaleString(undefined, {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+            {formatDateTime(message.createdAt)}
           </div>
         </div>
 

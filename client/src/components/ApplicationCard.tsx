@@ -1,6 +1,7 @@
 import { formatIDR } from "@/lib/utils";
 import { Mail, MapPin, PhoneCall } from "lucide-react";
 import { RentalPeriodEnum, RentalPeriodSuffix } from "@/lib/constants";
+import { formatDate } from "@/lib/datetime";
 import Image from "next/image";
 import React, { useState } from "react";
 
@@ -80,17 +81,15 @@ const ApplicationCard = ({
             <>
               <div className="flex justify-between">
                 <span className="text-gray-500">Start Date:</span>{" "}
-                {new Date(application.lease.startDate).toLocaleDateString()}
+                {formatDate(application.lease.startDate)}
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">End Date:</span>{" "}
-                {new Date(application.lease.endDate).toLocaleDateString()}
+                {formatDate(application.lease.endDate)}
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Next Payment:</span>{" "}
-                {new Date(
-                  application.lease.nextPaymentDate,
-                ).toLocaleDateString()}
+                {formatDate(application.lease.nextPaymentDate)}
               </div>
             </>
           ) : (

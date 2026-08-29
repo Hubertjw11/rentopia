@@ -4,6 +4,7 @@ import React from "react";
 import { Star } from "lucide-react";
 import { useGetReviewsQuery } from "@/state/api";
 import { Review } from "@/types/model";
+import { formatDate } from "@/lib/datetime";
 
 export const Stars = ({
   value,
@@ -64,7 +65,7 @@ const PropertyReviews = ({ propertyId }: { propertyId: number }) => {
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-semibold text-sm">{r.tenant.name}</span>
                   <span className="text-xs text-gray-400">
-                    {new Date(r.createdAt).toLocaleDateString()}
+                    {formatDate(r.createdAt)}
                   </span>
                 </div>
                 <div className="mt-1">

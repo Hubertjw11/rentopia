@@ -6,6 +6,7 @@ import Loading from "@/components/Loading";
 import { useGetApplicationsQuery, useGetAuthUserQuery } from "@/state/api";
 import { CircleCheckBig, Clock, Download, XCircle } from "lucide-react";
 import { useDownload } from "@/hooks/useDownload";
+import { formatDate } from "@/lib/datetime";
 import React from "react";
 
 const Applications = () => {
@@ -51,7 +52,7 @@ const Applications = () => {
                     <CircleCheckBig className="w-5 h-5 mr-2" />
                     The property is being rented by you until{" "}
                     {application.lease
-                      ? new Date(application.lease.endDate).toLocaleDateString()
+                      ? formatDate(application.lease.endDate)
                       : "—"}
                   </div>
                 ) : application.status === "Pending" ? (

@@ -27,6 +27,7 @@ import Loading from "./Loading";
 import MessageBubble from "./MessageBubble";
 import MessageSearchResults from "./MessageSearchResults";
 import ImageViewer from "./ImageViewer";
+import { formatDayLabel } from "@/lib/datetime";
 
 const PAGE_SIZE = 30;
 const MAX_MESSAGES = 300;
@@ -34,21 +35,6 @@ const MIN_QUERY_LENGTH = 2;
 const SEARCH_DEBOUNCE_MS = 300;
 
 const dayKey = (iso: string) => new Date(iso).toDateString();
-
-const dayLabel = (iso: string) => {
-  const date = new Date(iso);
-  const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
-
-  if (dayKey(iso) === today.toDateString()) return "Today";
-  if (dayKey(iso) === yesterday.toDateString()) return "Yesterday";
-  return date.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-};
 
 const ComposerNotice = ({
   title,
@@ -675,7 +661,7 @@ const Messages = ({ userType }: { userType: "manager" | "tenant" }) => {
                       {showDay && (
                         <div className="flex justify-center">
                           <span className="text-[10px] font-medium text-gray-500 bg-primary-100 rounded-full px-3 py-1">
-                            {dayLabel(m.createdAt)}
+                            {formatDayLabel(m.createdAt)}
                           </span>
                         </div>
                       )}

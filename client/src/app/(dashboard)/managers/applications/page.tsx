@@ -12,6 +12,7 @@ import {
 import { CircleCheckBig, Download, File, Hospital } from "lucide-react";
 import Link from "next/link";
 import { useDownload } from "@/hooks/useDownload";
+import { formatDate } from "@/lib/datetime";
 import React, { useState } from "react";
 
 const Applications = () => {
@@ -86,9 +87,7 @@ const Applications = () => {
                         <File className="w-5 h-5 mr-2 shrink-0" />
                         <span className="mr-2">
                           Application submitted on{" "}
-                          {new Date(
-                            application.applicationDate,
-                          ).toLocaleDateString()}
+                          {formatDate(application.applicationDate)}
                           .
                         </span>
                         <CircleCheckBig className="w-5 h-5 mr-2 shrink-0" />
