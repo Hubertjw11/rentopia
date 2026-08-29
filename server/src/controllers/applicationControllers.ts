@@ -172,8 +172,11 @@ export const updateApplicationStatus = async (
       return;
     }
 
-    const application = await prisma.application.findUnique({
-      where: { id: applicationId },
+    const application = await prisma.application.findFirst({
+      where: {
+        id: applicationId,
+        property: { managerCognitoId: req.user!.id },
+      },
       include: {
         property: true,
         tenant: true,
@@ -182,11 +185,6 @@ export const updateApplicationStatus = async (
 
     if (!application) {
       res.status(404).json({ message: "Application not found." });
-      return;
-    }
-
-    if (application.property.managerCognitoId !== req.user!.id) {
-      res.status(403).json({ message: "Access Denied!" });
       return;
     }
 

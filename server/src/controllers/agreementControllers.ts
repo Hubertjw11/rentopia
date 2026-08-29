@@ -11,7 +11,6 @@ const leaseInclude = {
   },
 } as const;
 
-/** Shapes a Prisma lease row into the generator's input. */
 const toAgreementData = (lease: any): AgreementData => ({
   lease: {
     id: lease.id,
@@ -43,8 +42,14 @@ export const downloadLeaseAgreement = async (
       res.status(400).json({ message: "Invalid lease id" });
       return;
     }
-    const lease = await prisma.lease.findUnique({
-      where: { id: leaseId },
+    const lease = await prisma.lease.findFirst({
+      where: {
+        id: leaseId,
+        OR: [
+          { tenantCognitoId: req.user!.id },
+          { property: { managerCognitoId: req.user!.id } },
+        ],
+      },
       include: leaseInclude,
     });
 
@@ -53,15 +58,6 @@ export const downloadLeaseAgreement = async (
       return;
     }
 
-    // Only the tenant on the lease or the property's manager may download it.
-    const requesterId = req.user?.id;
-    const allowed =
-      requesterId === lease.tenantCognitoId ||
-      requesterId === lease.property.managerCognitoId;
-    if (!allowed) {
-      res.status(403).json({ message: "Access Denied!" });
-      return;
-    }
 
     const pdf = await generateAgreementBuffer(toAgreementData(lease));
     const filename = `rentopia-agreement-${String(lease.id).padStart(5, "0")}-${safeName(lease.property.name)}.pdf`;
@@ -87,16 +83,12 @@ export const downloadPropertyAgreements = async (
       res.status(400).json({ message: "Invalid property id" });
       return;
     }
-    const property = await prisma.property.findUnique({
-      where: { id: propertyId },
+    const property = await prisma.property.findFirst({
+      where: { id: propertyId, managerCognitoId: req.user!.id },
+      select: { id: true, name: true },
     });
-
     if (!property) {
       res.status(404).json({ message: "Property not found" });
-      return;
-    }
-    if (req.user?.id !== property.managerCognitoId) {
-      res.status(403).json({ message: "Access Denied!" });
       return;
     }
 

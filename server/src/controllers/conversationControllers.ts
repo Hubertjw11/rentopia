@@ -202,8 +202,11 @@ export const createConversation = async (
       return;
     }
 
-    const property = await prisma.property.findUnique({
-      where: { id: propertyIdNum },
+    const property = await prisma.property.findFirst({
+      where:
+        role === "manager"
+          ? { id: propertyIdNum, managerCognitoId: userId }
+          : { id: propertyIdNum },
       select: { id: true, managerCognitoId: true },
     });
     if (!property) {
@@ -215,10 +218,6 @@ export const createConversation = async (
     if (role === "tenant") {
       tenantId = userId;
     } else {
-      if (property.managerCognitoId !== userId) {
-        res.status(403).json({ message: "Access Denied!" });
-        return;
-      }
       if (!tenantCognitoId) {
         res.status(400).json({ message: "tenantCognitoId is required" });
         return;

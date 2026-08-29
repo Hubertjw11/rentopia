@@ -33,16 +33,12 @@ export const getPropertyLeases = async (
       return;
     }
 
-    const property = await prisma.property.findUnique({
-      where: { id: propertyId },
+    const property = await prisma.property.findFirst({
+      where: { id: propertyId, managerCognitoId: req.user!.id },
+      select: { id: true },
     });
-
     if (!property) {
       res.status(404).json({ message: "Property not found" });
-      return;
-    }
-    if (property.managerCognitoId !== req.user!.id) {
-      res.status(403).json({ message: "Access Denied!" });
       return;
     }
 
@@ -69,16 +65,12 @@ export const getPropertyPayments = async (
       return;
     }
 
-    const property = await prisma.property.findUnique({
-      where: { id: propertyId },
+    const property = await prisma.property.findFirst({
+      where: { id: propertyId, managerCognitoId: req.user!.id },
+      select: { id: true },
     });
-
     if (!property) {
       res.status(404).json({ message: "Property not found" });
-      return;
-    }
-    if (property.managerCognitoId !== req.user!.id) {
-      res.status(403).json({ message: "Access Denied!" });
       return;
     }
 
@@ -103,22 +95,18 @@ export const getLeasePayments = async (
       return;
     }
 
-    const lease = await prisma.lease.findUnique({
-      where: { id: leaseId },
-      include: { property: true },
+    const lease = await prisma.lease.findFirst({
+      where: {
+        id: leaseId,
+        OR: [
+          { tenantCognitoId: req.user!.id },
+          { property: { managerCognitoId: req.user!.id } },
+        ],
+      },
+      select: { id: true },
     });
-
     if (!lease) {
       res.status(404).json({ message: "Lease not found" });
-      return;
-    }
-
-    const requesterId = req.user!.id;
-    const allowed =
-      requesterId === lease.tenantCognitoId ||
-      requesterId === lease.property.managerCognitoId;
-    if (!allowed) {
-      res.status(403).json({ message: "Access Denied!" });
       return;
     }
 
