@@ -27,6 +27,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useDownload } from "@/hooks/useDownload";
+import ManagerViewingSlots from "@/components/ManagerViewingSlots";
+import { formatDate } from "@/lib/datetime";
 import React from "react";
 import { formatIDR } from "@/lib/utils";
 
@@ -71,6 +73,8 @@ const PropertyTenants = () => {
         title={property?.name || "My Property"}
         subtitle="Manage tenants and leases for this property"
       />
+      <ManagerViewingSlots propertyId={propertyId} />
+
       <div className="w-full space-y-6">
         <div className="mt-8 bg-white rounded-xl shadow-md overflow-hidden p-6">
           <div className="flex justify-between items-center mb-4">
@@ -149,9 +153,9 @@ const PropertyTenants = () => {
                     </TableCell>
                     <TableCell>
                       <div>
-                        {new Date(lease.startDate).toLocaleDateString()} -
+                        {formatDate(lease.startDate)} -
                       </div>
-                      <div>{new Date(lease.endDate).toLocaleDateString()}</div>
+                      <div>{formatDate(lease.endDate)}</div>
                     </TableCell>
                     <TableCell>
                       {formatIDR(lease.rent)}

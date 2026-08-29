@@ -48,6 +48,31 @@ const verifyToken = (token: string): Promise<DecodedToken> =>
     );
   });
 
+const toRequestUser = (decoded: DecodedToken) => ({
+  id: decoded.sub,
+  role: decoded["custom:role"] || "",
+  email: typeof decoded.email === "string" ? decoded.email : null,
+  emailVerified:
+    decoded.email_verified === true || decoded.email_verified === "true",
+});
+
+export const optionalAuth = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) {
+    next();
+    return;
+  }
+  try {
+    req.user = toRequestUser(await verifyToken(token));
+  } catch {
+  }
+  next();
+};
+
 export const authMiddleware = (allowedRoles: string[]) => {
   return async (
     req: Request,
@@ -64,13 +89,7 @@ export const authMiddleware = (allowedRoles: string[]) => {
     try {
       const decoded = await verifyToken(token);
       const userRole = decoded["custom:role"] || "";
-      req.user = {
-        id: decoded.sub,
-        role: userRole,
-        email: typeof decoded.email === "string" ? decoded.email : null,
-        emailVerified:
-          decoded.email_verified === true || decoded.email_verified === "true",
-      };
+      req.user = toRequestUser(decoded);
 
       const hasAccess = allowedRoles.includes(userRole.toLowerCase());
       if (!hasAccess) {

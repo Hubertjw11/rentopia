@@ -75,6 +75,13 @@ enum NotificationType {
   ApplicationApproved
   ApplicationDenied
   NewMessage
+  ViewingBooked
+  ViewingCancelled
+}
+
+enum ViewingMode {
+  InPerson
+  Virtual
 }
 
 enum PaymentStatus {
@@ -116,6 +123,7 @@ model Property {
   tenants       Tenant[]       @relation("TenantProperties")
   conversations Conversation[]
   reviews       Review[]
+  viewingSlots  ViewingSlot[]
 }
 
 model Manager {
@@ -145,6 +153,7 @@ model Tenant {
   leases       Lease[]
   conversations Conversation[]
   reviews       Review[]
+  viewingSlots ViewingSlot[]
 }
 
 model Location {
@@ -288,4 +297,23 @@ model Review {
 
   @@unique([propertyId, tenantCognitoId])
   @@index([propertyId, createdAt])
+}
+
+
+model ViewingSlot {
+  id                Int         @id @default(autoincrement())
+  propertyId        Int
+  startsAt          DateTime
+  durationMinutes   Int         @default(30)
+  mode              ViewingMode
+  meetingUrl        String?
+  bookedByCognitoId String?
+  bookedAt          DateTime?
+  createdAt         DateTime    @default(now())
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  bookedBy Tenant?  @relation(fields: [bookedByCognitoId], references: [cognitoId], onDelete: SetNull)
+
+  @@index([propertyId, startsAt])
+  @@index([bookedByCognitoId, startsAt])
 }

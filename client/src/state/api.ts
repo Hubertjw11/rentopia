@@ -19,6 +19,8 @@ import {
   MessageSearchPage,
   ReviewRow,
   Review,
+  ViewingSlot,
+  ViewingMode,
 } from "@/types/model";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { fetchAuthSession, getCurrentUser } from "aws-amplify/auth";
@@ -75,6 +77,7 @@ export const api = createApi({
     "Conversations",
     "Messages",
     "Reviews",
+    "ViewingSlots",
   ],
   endpoints: (build) => ({
     getAuthUser: build.query<User, void>({
@@ -682,6 +685,78 @@ export const api = createApi({
       },
     }),
 
+    // viewing slot related endpoints
+    getViewingSlots: build.query<ViewingSlot[], number>({
+      query: (propertyId) => `properties/${propertyId}/viewing-slots`,
+      providesTags: ["ViewingSlots"],
+    }),
+
+    createViewingSlot: build.mutation<
+      ViewingSlot,
+      {
+        propertyId: number;
+        startsAt: string;
+        durationMinutes: number;
+        mode: ViewingMode;
+        meetingUrl?: string;
+      }
+    >({
+      query: ({ propertyId, ...body }) => ({
+        url: `properties/${propertyId}/viewing-slots`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["ViewingSlots"],
+      async onQueryStarted(_, { queryFulfilled }) {
+        await withToast(queryFulfilled, {
+          success: "Viewing slot added",
+          error: "Could not add that viewing slot.",
+        });
+      },
+    }),
+
+    deleteViewingSlot: build.mutation<void, number>({
+      query: (slotId) => ({
+        url: `viewing-slots/${slotId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["ViewingSlots"],
+      async onQueryStarted(_, { queryFulfilled }) {
+        await withToast(queryFulfilled, {
+          success: "Viewing slot removed",
+          error: "Could not remove that viewing slot.",
+        });
+      },
+    }),
+
+    bookViewingSlot: build.mutation<ViewingSlot, number>({
+      query: (slotId) => ({
+        url: `viewing-slots/${slotId}/booking`,
+        method: "POST",
+      }),
+      invalidatesTags: ["ViewingSlots"],
+      async onQueryStarted(_, { queryFulfilled }) {
+        await withToast(queryFulfilled, {
+          success: "Viewing booked",
+          error: "Could not book that viewing.",
+        });
+      },
+    }),
+
+    cancelViewingBooking: build.mutation<ViewingSlot, number>({
+      query: (slotId) => ({
+        url: `viewing-slots/${slotId}/booking`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["ViewingSlots"],
+      async onQueryStarted(_, { queryFulfilled }) {
+        await withToast(queryFulfilled, {
+          success: "Viewing cancelled",
+          error: "Could not cancel that viewing.",
+        });
+      },
+    }),
+
     // review related endpoints
     getReviews: build.query<Review[], number>({
       query: (propertyId) => `properties/${propertyId}/reviews`,
@@ -772,6 +847,11 @@ export const {
   useDeleteMessagesMutation,
   useSearchMessagesQuery,
   useEditMessageMutation,
+  useGetViewingSlotsQuery,
+  useCreateViewingSlotMutation,
+  useDeleteViewingSlotMutation,
+  useBookViewingSlotMutation,
+  useCancelViewingBookingMutation,
   useGetReviewsQuery,
   useUpsertReviewMutation,
   useDeleteReviewMutation,

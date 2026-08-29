@@ -10,6 +10,7 @@ import PropertyLocation from "./PropertyLocation";
 import ContactWidget from "./ContactWidget";
 import ApplicationModal from "./ApplicationModal";
 import PropertyReviews from "@/components/PropertyReviews";
+import PropertyViewings from "@/components/PropertyViewings";
 
 const SingleListing = () => {
   const { id } = useParams();
@@ -31,6 +32,7 @@ const SingleListing = () => {
         <div className="order-2 md:order-1">
           <PropertyOverview propertyId={propertyId} />
           <PropertyDetails propertyId={propertyId} />
+          <PropertyViewings propertyId={propertyId} />
           <PropertyLocation propertyId={propertyId} />
           <PropertyReviews propertyId={propertyId} />
         </div>

@@ -155,6 +155,20 @@ export type PropertyMarker = {
   latitude: number;
 };
 
+export type ViewingMode = "InPerson" | "Virtual";
+
+export type ViewingSlot = {
+  id: number;
+  propertyId: number;
+  startsAt: string;
+  durationMinutes: number;
+  mode: ViewingMode;
+  isBooked: boolean;
+  isMine: boolean;
+  bookedByCognitoId: string | null;
+  meetingUrl: string | null;
+};
+
 export type MessageAttachment = {
   url: string;
   type: string;
