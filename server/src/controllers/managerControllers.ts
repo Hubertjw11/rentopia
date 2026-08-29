@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
-import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
-import { wktToGeoJSON } from "@terraformer/wkt";
+import { withCoordinates } from "../lib/coordinates";
 import { verifiedEmailFor } from "../lib/verifiedEmail";
 
 export const getManager = async (
@@ -99,31 +98,7 @@ export const getManagerProperties = async (
       },
     });
 
-    const locationIds = properties.map((p) => p.location.id);
-    const rows = locationIds.length
-      ? await prisma.$queryRaw<{ id: number; coordinates: string }[]>`
-          SELECT id, ST_AsText(coordinates) AS coordinates
-          FROM "Location" WHERE id IN (${Prisma.join(locationIds)})`
-      : [];
-    const wktById = new Map(rows.map((r) => [r.id, r.coordinates]));
-
-    const propertiesWithFormattedLocation = properties.map((property) => {
-      const geoJSON: any = wktToGeoJSON(
-        wktById.get(property.location.id) || "",
-      );
-      return {
-        ...property,
-        location: {
-          ...property.location,
-          coordinates: {
-            longitude: geoJSON?.coordinates?.[0],
-            latitude: geoJSON?.coordinates?.[1],
-          },
-        },
-      };
-    });
-
-    res.json(propertiesWithFormattedLocation);
+    res.json(await withCoordinates(properties));
   } catch (error) {
     console.error("Error retrieving manager properties:", error);
     res.status(500).json({ message: "Error retrieving manager properties" });

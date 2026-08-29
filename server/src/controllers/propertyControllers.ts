@@ -10,7 +10,7 @@ import {
 } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { uploadFile } from "../lib/s3";
-import { wktToGeoJSON } from "@terraformer/wkt";
+import { withCoordinatesOne } from "../lib/coordinates";
 import axios from "axios";
 import { parseId, parseNumber } from "../lib/params";
 import { MONTHLY_FACTOR } from "../lib/rentalPeriod";
@@ -290,26 +290,7 @@ export const getProperty = async (
       return;
     }
 
-    {
-      const coordinates: { coordinates: string }[] =
-        await prisma.$queryRaw`SELECT ST_asText(coordinates) as coordinates from "Location" where id = ${property.location.id}`;
-
-      const geoJSON: any = wktToGeoJSON(coordinates[0]?.coordinates || "");
-      const longitude = geoJSON.coordinates[0];
-      const latitude = geoJSON.coordinates[1];
-
-      const propertyWithCoordinates = {
-        ...property,
-        location: {
-          ...property.location,
-          coordinates: {
-            longitude,
-            latitude,
-          },
-        },
-      };
-      res.json(propertyWithCoordinates);
-    }
+    res.json(await withCoordinatesOne(property));
   } catch (error) {
     console.error("Error retrieving property:", error);
     res.status(500).json({ message: "Error retrieving property" });
