@@ -70,8 +70,8 @@ const PropertyDetails = ({ propertyId }: PropertyDetailsProps) => {
           Fees and Policies
         </h3>
         <p className="text-sm text-primary-600 dark:text-primary-300 mt-2">
-          The fees below are based on community-supplied data and may exclude
-          additional fees and utilities.
+          Set by the property manager. Utilities and any building charges are
+          not included.
         </p>
         <Tabs defaultValue="required-fees" className="mt-8">
           <TabsList className="grid w-full grid-cols-3">
@@ -96,7 +96,7 @@ const PropertyDetails = ({ propertyId }: PropertyDetailsProps) => {
                 Security Deposit
               </span>
               <span className="text-primary-700">
-                ${property.securityDeposit}
+                {formatIDR(property.securityDeposit)}
               </span>
             </div>
             <hr />
