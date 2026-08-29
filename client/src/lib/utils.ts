@@ -67,6 +67,19 @@ type MutationMessages = {
   error: string;
 };
 
+const deliberateServerMessage = (err: unknown): string | null => {
+  const failure = err as { status?: number; data?: { message?: unknown } };
+  if (
+    typeof failure?.status !== "number" ||
+    failure.status < 400 ||
+    failure.status >= 500
+  ) {
+    return null;
+  }
+  const message = failure.data?.message;
+  return typeof message === "string" && message.trim() ? message.trim() : null;
+};
+
 export const withToast = async <T>(
   mutationFn: Promise<T>,
   messages: Partial<MutationMessages>,
@@ -78,7 +91,8 @@ export const withToast = async <T>(
     if (success) toast.success(success);
     return result;
   } catch (err) {
-    if (error) toast.error(error);
+    const reason = deliberateServerMessage(err) ?? error;
+    if (reason) toast.error(reason);
     throw err;
   }
 };
