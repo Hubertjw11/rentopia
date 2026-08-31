@@ -50,8 +50,8 @@ const PropertyOverview = ({ propertyId }: PropertyOverviewProps) => {
       </div>
 
       {/* Details */}
-      <div className="border border-primary-200 rounded-xl p-6 mb-6">
-        <div className="flex justify-between items-center gap-4 px-5">
+      <div className="border border-primary-200 rounded-xl p-4 sm:p-6 mb-6">
+        <div className="grid grid-cols-2 gap-4 sm:flex sm:justify-between sm:items-center sm:px-5">
           <div>
             <div className="text-sm text-gray-500">
               Rent (
@@ -67,24 +67,24 @@ const PropertyOverview = ({ propertyId }: PropertyOverviewProps) => {
               </span>
             </div>
           </div>
-          <div className="border-l border-gray-300 h-10"></div>
+          <div className="hidden sm:block border-l border-gray-300 h-10"></div>
           <div>
             <div className="text-sm text-gray-500">Bedrooms</div>
             <div className="font-semibold">{property.beds} bd</div>
           </div>
-          <div className="border-l border-gray-300 h-10"></div>
+          <div className="hidden sm:block border-l border-gray-300 h-10"></div>
           <div>
             <div className="text-sm text-gray-500">Bathrooms</div>
             <div className="font-semibold">{property.baths} ba</div>
           </div>
-          <div className="border-l border-gray-300 h-10"></div>
+          <div className="hidden sm:block border-l border-gray-300 h-10"></div>
           <div>
             <div className="text-sm text-gray-500">Area</div>
             <div className="font-semibold">
               {property.areaSqm.toLocaleString()} m²
             </div>
           </div>
-          <div className="border-l border-gray-300 h-10"></div>
+          <div className="hidden sm:block border-l border-gray-300 h-10"></div>
           <div>
             <div className="text-sm text-gray-500">Furnishing</div>
             <div className="font-semibold">
