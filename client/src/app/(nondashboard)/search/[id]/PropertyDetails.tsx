@@ -79,7 +79,7 @@ const PropertyDetails = ({ propertyId }: PropertyDetailsProps) => {
             <TabsTrigger value="pets">Pets</TabsTrigger>
             <TabsTrigger value="parking">Parking</TabsTrigger>
           </TabsList>
-          <TabsContent value="required-fees" className="w-1/3">
+          <TabsContent value="required-fees" className="w-full md:w-1/3">
             <p className="font-semibold mt-5 mb-2">One time move in fees</p>
             <hr />
             <div className="flex justify-between py-2 bg-secondary-50">
