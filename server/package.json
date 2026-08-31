@@ -7,8 +7,10 @@
     "build": "rimraf dist && npx tsc",
     "start": "npm run build && node dist/src/index.js",
     "dev": "concurrently \"npx tsc -w --noEmit\" \"npx tsx watch src/index.ts\"",
-    "seed": "tsx prisma/seed.ts",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "pretest": "tsx tests/support/prepare.ts",
+    "test": "tsx --test --test-concurrency=1 \"tests/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit -p tsconfig.test.json"
   },
   "keywords": [],
   "author": "",
