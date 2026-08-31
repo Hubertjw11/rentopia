@@ -77,7 +77,7 @@ const PropertyTenants = () => {
 
       <div className="w-full space-y-6">
         <div className="mt-8 bg-white rounded-xl shadow-md overflow-hidden p-6">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-col gap-4 mb-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-2xl font-bold mb-1">Tenants Overview</h2>
               <p className="text-sm text-gray-500">

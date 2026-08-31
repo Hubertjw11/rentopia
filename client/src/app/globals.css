@@ -144,6 +144,15 @@ body,
   @apply dark:bg-black;
 }
 
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select,
+  [data-slot="select-trigger"] {
+    font-size: 16px;
+  }
+}
+
 .dashboard-container {
   @apply pt-8 pb-5 px-4 sm:px-8;
 }
