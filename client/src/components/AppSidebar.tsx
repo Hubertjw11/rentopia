@@ -24,7 +24,7 @@ import Link from "next/link";
 
 const AppSidebar = ({ userType }: AppSidebarProps) => {
   const pathname = usePathname();
-  const { toggleSidebar, open } = useSidebar();
+  const { toggleSidebar, open, isMobile, setOpenMobile } = useSidebar();
   const navLinks =
     userType === "manager"
       ? [
@@ -107,7 +107,14 @@ const AppSidebar = ({ userType }: AppSidebarProps) => {
               <SidebarMenuItem key={link.href}>
                 <SidebarMenuButton
                   render={
-                    <Link href={link.href} scroll={false} className="w-full" />
+                    <Link
+                      href={link.href}
+                      scroll={false}
+                      className="w-full"
+                      onClick={() => {
+                        if (isMobile) setOpenMobile(false);
+                      }}
+                    />
                   }
                   className={cn(
                     "flex items-center px-7 py-7",
