@@ -24,7 +24,9 @@ import Link from "next/link";
 
 const AppSidebar = ({ userType }: AppSidebarProps) => {
   const pathname = usePathname();
-  const { toggleSidebar, open, isMobile, setOpenMobile } = useSidebar();
+  const { toggleSidebar, open, openMobile, isMobile, setOpenMobile } =
+    useSidebar();
+  const isOpen = isMobile ? openMobile : open;
   const navLinks =
     userType === "manager"
       ? [
@@ -70,10 +72,10 @@ const AppSidebar = ({ userType }: AppSidebarProps) => {
             <div
               className={cn(
                 "flex min-h-14 w-full items-center pt-3 mb-3",
-                open ? "justify-between px-6" : "justify-center",
+                isOpen ? "justify-between px-6" : "justify-center",
               )}
             >
-              {open ? (
+              {isOpen ? (
                 <>
                   <h1 className="text-xl font-bold text-gray-800">
                     {userType === "manager" ? "Manager View" : "Renter View"}
@@ -121,7 +123,7 @@ const AppSidebar = ({ userType }: AppSidebarProps) => {
                     isActive
                       ? "bg-gray-100"
                       : "text-gray-600 hover:bg-gray-100",
-                    open ? "text-blue-600" : "ml-1.25",
+                    isOpen ? "text-blue-600" : "ml-1.25",
                   )}
                 >
                   <div className="flex items-center gap-3">

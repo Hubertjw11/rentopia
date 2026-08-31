@@ -37,7 +37,9 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
         <div style={{ paddingTop: `${NAVBAR_HEIGHT}px` }}>
           <main className="flex">
             <Sidebar userType={userRole === "manager" ? "manager" : "tenant"} />{" "}
-            <div className="grow transition-all duration-300">{children}</div>
+            <div className="grow min-w-0 transition-all duration-300">
+              {children}
+            </div>
           </main>
         </div>
       </div>

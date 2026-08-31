@@ -145,7 +145,7 @@ body,
 }
 
 .dashboard-container {
-  @apply pt-8 pb-5 px-8;
+  @apply pt-8 pb-5 px-4 sm:px-8;
 }
 
 .mapboxgl-popup-content {

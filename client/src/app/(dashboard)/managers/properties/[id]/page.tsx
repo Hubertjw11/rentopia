@@ -117,8 +117,8 @@ const PropertyTenants = () => {
             </div>
           </div>
           <hr className="mt-4 mb-1" />
-          <div className="overflow-x-auto">
-            <Table>
+          <div>
+            <Table className="min-w-[640px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Tenant</TableHead>
@@ -155,7 +155,7 @@ const PropertyTenants = () => {
                       <div>
                         {formatDate(lease.startDate)} -
                       </div>
-                      <div>{formatDate(lease.endDate)}</div>
+                      <div>{formatDate(lease.endDate)}</div>  
                     </TableCell>
                     <TableCell>
                       {formatIDR(lease.rent)}
