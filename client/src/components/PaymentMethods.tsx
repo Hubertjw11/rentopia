@@ -130,7 +130,7 @@ const PaymentMethods = ({ cognitoId }: { cognitoId: string }) => {
           {methods.map((method) => (
             <div
               key={method.id}
-              className="border rounded-lg p-4 flex items-center justify-between gap-4"
+              className="border rounded-lg p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
             >
               <div className="flex items-center gap-4 min-w-0">
                 <div className="w-14 h-9 bg-primary-900 flex items-center justify-center rounded-md shrink-0">
