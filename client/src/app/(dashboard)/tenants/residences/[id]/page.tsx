@@ -134,11 +134,24 @@ const ResidenceCard = ({
   );
 };
 
+const InvoiceStatusPill = ({ status }: { status: string }) => (
+  <span
+    className={`shrink-0 px-2 py-1 rounded-full text-xs font-semibold border ${
+      status === "Paid"
+        ? "bg-green-100 text-green-800 border-green-300"
+        : "bg-yellow-100 text-yellow-800 border-yellow-300"
+    }`}
+  >
+    {status === "Paid" ? <Check className="w-4 h-4 inline-block mr-1" /> : null}
+    {status}
+  </span>
+);
+
 const BillingHistory = ({ payments }: { payments: Payment[] }) => {
   return (
     <div className="mt-8 bg-white rounded-xl shadow-md overflow-hidden p-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold mb-1">Billing History</h2>
           <p className="text-sm text-gray-500">
@@ -152,9 +165,47 @@ const BillingHistory = ({ payments }: { payments: Payment[] }) => {
           </button>
         </div>
       </div>
-      <hr className="mt-4 mb-1" />
-      <div className="overflow-x-auto">
-        <Table>
+      <hr className="mt-4 mb-1" />  
+      <div className="space-y-4 py-2 md:hidden">
+        {!payments.length && (
+          <p className="py-4 text-sm text-gray-500">No payments recorded yet.</p>
+        )}
+        {payments.map((payment) => (
+          <div
+            key={payment.id}
+            className="rounded-xl border border-gray-200 p-4"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-center font-medium">
+                <FileText className="w-4 h-4 mr-2 shrink-0" />
+                <span className="truncate">
+                  Invoice #{payment.id} - {formatMonthYear(payment.paymentDate)}
+                </span>
+              </div>
+              <InvoiceStatusPill status={payment.paymentStatus} />
+            </div>
+
+            <dl className="mt-4 grid grid-cols-2 gap-y-3 text-sm">
+              <div>
+                <dt className="text-gray-500">Billing date</dt>
+                <dd className="mt-0.5">{formatDate(payment.paymentDate)}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-500">Amount</dt>
+                <dd className="mt-0.5">{formatIDR(payment.amountPaid)}</dd>
+              </div>
+            </dl>
+
+            <button className="mt-4 w-full border border-gray-300 text-gray-700 py-2 px-4 rounded-md flex items-center justify-center font-semibold hover:bg-primary-700 hover:text-primary-50">
+              <ArrowDownToLineIcon className="w-4 h-4 mr-1" />
+              Download
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden md:block">
+        <Table className="min-w-[560px]">
           <TableHeader>
             <TableRow>
               <TableHead>Invoice</TableHead>
@@ -175,18 +226,7 @@ const BillingHistory = ({ payments }: { payments: Payment[] }) => {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs font-semibold border ${
-                      payment.paymentStatus === "Paid"
-                        ? "bg-green-100 text-green-800 border-green-300"
-                        : "bg-yellow-100 text-yellow-800 border-yellow-300"
-                    }`}
-                  >
-                    {payment.paymentStatus === "Paid" ? (
-                      <Check className="w-4 h-4 inline-block mr-1" />
-                    ) : null}
-                    {payment.paymentStatus}
-                  </span>
+                  <InvoiceStatusPill status={payment.paymentStatus} />
                 </TableCell>
                 <TableCell>
                   {formatDate(payment.paymentDate)}
