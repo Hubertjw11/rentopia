@@ -6,7 +6,7 @@ import {
 } from "@/state";
 import { useAppSelector } from "@/state/redux";
 import { usePathname, useRouter } from "next/navigation";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { debounce } from "lodash";
 import {
@@ -39,7 +39,25 @@ const FiltersBar = () => {
   const [searchInput, setSearchInput] = useState(filters.location);
   const [lastLocation, setLastLocation] = useState(filters.location);
 
-  // Render-phase reset — React's documented alternative to syncing in an effect.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+
+  const syncEdges = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    setEdges({ left: el.scrollLeft > 4, right: el.scrollLeft < max - 4 });
+  };
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    syncEdges();
+    const observer = new ResizeObserver(syncEdges);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   if (filters.location !== lastLocation) {
     setLastLocation(filters.location);
     setSearchInput(filters.location);
@@ -112,170 +130,193 @@ const FiltersBar = () => {
   return (
     <div className="flex w-full items-center gap-2 py-5">
       {/* Filters */}
-      <div className="flex min-w-0 flex-1 items-center gap-4 overflow-x-auto p-2">
-        {/* All Filters */}
-        <Button
-          variant="outline"
-          className={cn(
-            "shrink-0 gap-2 rounded-xl border-primary-400 hover:bg-primary-500 hover:text-primary-100",
-            isFiltersFullOpen && "bg-primary-700 text-primary-100",
-          )}
-          onClick={() => dispatch(toggleFiltersFullOpen())}
+      <div className="relative min-w-0 flex-1">
+        <div
+          ref={scrollRef}
+          onScroll={syncEdges}
+          className="flex items-center gap-4 overflow-x-auto p-2"
         >
-          <Filter className="w-4 h-4" />
-          <span>All Filters</span>
-        </Button>
-
-        {/* Search Location */}
-        <div className="flex shrink-0 items-center">
-          <Input
-            placeholder="Search Location"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="w-40 rounded-l-xl rounded-r-none border-primary-400 border-r-0"
-          />
+          {/* All Filters */}
           <Button
-            onClick={handleLocationSearch}
-            className={`bg-white text-primary-700 rounded-r-xl rounded-l-none border-l-none 
-                border-primary-400 shadow-none border hover:bg-primary-700 hover:text-primary-50`}
+            variant="outline"
+            className={cn(
+              "shrink-0 gap-2 rounded-xl border-primary-400 hover:bg-primary-500 hover:text-primary-100",
+              isFiltersFullOpen && "bg-primary-700 text-primary-100",
+            )}
+            onClick={() => dispatch(toggleFiltersFullOpen())}
           >
-            <Search className="w-4 h-4" />
+            <Filter className="w-4 h-4" />
+            <span>All Filters</span>
           </Button>
-        </div>
 
-        {/* Price Range */}
-        <div className="flex shrink-0 gap-1">
-          {/* Minimum Price Selector */}
+          {/* Search Location */}
+          <div className="flex shrink-0 items-center">
+            <Input
+              placeholder="Search Location"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="w-40 rounded-l-xl rounded-r-none border-primary-400 border-r-0"
+            />
+            <Button
+              onClick={handleLocationSearch}
+              className={`bg-white text-primary-700 rounded-r-xl rounded-l-none border-l-none 
+                border-primary-400 shadow-none border hover:bg-primary-700 hover:text-primary-50`}
+            >
+              <Search className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Price Range */}
+          <div className="flex shrink-0 gap-1">
+            {/* Minimum Price Selector */}
+            <Select
+              value={filters.priceRange[0]?.toString() || "any"}
+              onValueChange={(value) =>
+                handleFilterChange("priceRange", value, true)
+              }
+            >
+              <SelectTrigger className="w-32 rounded-xl border-primary-400">
+                <SelectValue>
+                  {formatPriceValue(filters.priceRange[0], true)}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                <SelectItem value="any">Any Min Price</SelectItem>
+                {[
+                  1_000_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000,
+                  20_000_000, 50_000_000,
+                ].map((price) => (
+                  <SelectItem key={price} value={price.toString()}>
+                    {formatIDRCompact(price)}+
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Maximum Price Selector */}
+            <Select
+              value={filters.priceRange[1]?.toString() || "any"}
+              onValueChange={(value) =>
+                handleFilterChange("priceRange", value, false)
+              }
+            >
+              <SelectTrigger className="w-34 rounded-xl border-primary-400">
+                <SelectValue>
+                  {formatPriceValue(filters.priceRange[1], false)}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                <SelectItem value="any">Any Max Price</SelectItem>
+                {[
+                  2_000_000, 3_000_000, 5_000_000, 10_000_000, 20_000_000,
+                  50_000_000,
+                ].map((price) => (
+                  <SelectItem key={price} value={price.toString()}>
+                    &lt;{formatIDRCompact(price)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Beds and Baths */}
+          <div className="flex shrink-0 gap-1">
+            {/* Beds */}
+            <Select
+              value={filters.beds}
+              onValueChange={(value) => handleFilterChange("beds", value, null)}
+              items={{
+                any: "Any Beds",
+                "1": "1+ bed",
+                "2": "2+ beds",
+                "3": "3+ beds",
+                "4": "4+ beds",
+              }}
+            >
+              <SelectTrigger className="w-26 rounded-xl border-primary-400">
+                <SelectValue placeholder="Beds" />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                <SelectItem value="any">Any Beds</SelectItem>
+                <SelectItem value="1">1+ bed</SelectItem>
+                <SelectItem value="2">2+ beds</SelectItem>
+                <SelectItem value="3">3+ beds</SelectItem>
+                <SelectItem value="4">4+ beds</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Baths */}
+            <Select
+              value={filters.baths}
+              onValueChange={(value) =>
+                handleFilterChange("baths", value, null)
+              }
+              items={{
+                any: "Any Baths",
+                "1": "1+ bath",
+                "2": "2+ baths",
+                "3": "3+ baths",
+              }}
+            >
+              <SelectTrigger className="w-26 rounded-xl border-primary-400">
+                <SelectValue placeholder="Baths" />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                <SelectItem value="any">Any Baths</SelectItem>
+                <SelectItem value="1">1+ bath</SelectItem>
+                <SelectItem value="2">2+ baths</SelectItem>
+                <SelectItem value="3">3+ baths</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Property Type */}
           <Select
-            value={filters.priceRange[0]?.toString() || "any"}
+            value={filters.propertyType || "any"}
             onValueChange={(value) =>
-              handleFilterChange("priceRange", value, true)
+              handleFilterChange("propertyType", value, null)
             }
+            items={{
+              any: "Any Property Type",
+              ...Object.fromEntries(
+                Object.keys(PropertyTypeIcons).map((t) => [t, t]),
+              ),
+            }}
           >
-            <SelectTrigger className="w-32 rounded-xl border-primary-400">
-              <SelectValue>
-                {formatPriceValue(filters.priceRange[0], true)}
-              </SelectValue>
+            <SelectTrigger className="w-32 shrink-0 rounded-xl border-primary-400">
+              <SelectValue placeholder="Home Type" />
             </SelectTrigger>
             <SelectContent className="bg-white">
-              <SelectItem value="any">Any Min Price</SelectItem>
-              {[
-                1_000_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000,
-                20_000_000, 50_000_000,
-              ].map((price) => (
-                <SelectItem key={price} value={price.toString()}>
-                  {formatIDRCompact(price)}+
+              <SelectItem value="any">Any Property Type</SelectItem>
+              {Object.entries(PropertyTypeIcons).map(([type, Icon]) => (
+                <SelectItem key={type} value={type}>
+                  <div className="flex items-center">
+                    <Icon className="w-4 h-4 mr-2" />
+                    <span>{type}</span>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-
-          {/* Maximum Price Selector */}
-          <Select
-            value={filters.priceRange[1]?.toString() || "any"}
-            onValueChange={(value) =>
-              handleFilterChange("priceRange", value, false)
-            }
-          >
-            <SelectTrigger className="w-34 rounded-xl border-primary-400">
-              <SelectValue>
-                {formatPriceValue(filters.priceRange[1], false)}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="bg-white">
-              <SelectItem value="any">Any Max Price</SelectItem>
-              {[
-                2_000_000, 3_000_000, 5_000_000, 10_000_000, 20_000_000,
-                50_000_000,
-              ].map((price) => (
-                <SelectItem key={price} value={price.toString()}>
-                  &lt;{formatIDRCompact(price)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
-
-        {/* Beds and Baths */}
-        <div className="flex shrink-0 gap-1">
-          {/* Beds */}
-          <Select
-            value={filters.beds}
-            onValueChange={(value) => handleFilterChange("beds", value, null)}
-            items={{
-              any: "Any Beds",
-              "1": "1+ bed",
-              "2": "2+ beds",
-              "3": "3+ beds",
-              "4": "4+ beds",
-            }}
-          >
-            <SelectTrigger className="w-26 rounded-xl border-primary-400">
-              <SelectValue placeholder="Beds" />
-            </SelectTrigger>
-            <SelectContent className="bg-white">
-              <SelectItem value="any">Any Beds</SelectItem>
-              <SelectItem value="1">1+ bed</SelectItem>
-              <SelectItem value="2">2+ beds</SelectItem>
-              <SelectItem value="3">3+ beds</SelectItem>
-              <SelectItem value="4">4+ beds</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Baths */}
-          <Select
-            value={filters.baths}
-            onValueChange={(value) => handleFilterChange("baths", value, null)}
-            items={{
-              any: "Any Baths",
-              "1": "1+ bath",
-              "2": "2+ baths",
-              "3": "3+ baths",
-            }}
-          >
-            <SelectTrigger className="w-26 rounded-xl border-primary-400">
-              <SelectValue placeholder="Baths" />
-            </SelectTrigger>
-            <SelectContent className="bg-white">
-              <SelectItem value="any">Any Baths</SelectItem>
-              <SelectItem value="1">1+ bath</SelectItem>
-              <SelectItem value="2">2+ baths</SelectItem>
-              <SelectItem value="3">3+ baths</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Property Type */}
-        <Select
-          value={filters.propertyType || "any"}
-          onValueChange={(value) =>
-            handleFilterChange("propertyType", value, null)
-          }
-          items={{
-            any: "Any Property Type",
-            ...Object.fromEntries(
-              Object.keys(PropertyTypeIcons).map((t) => [t, t]),
-            ),
-          }}
-        >
-          <SelectTrigger className="w-32 shrink-0 rounded-xl border-primary-400">
-            <SelectValue placeholder="Home Type" />
-          </SelectTrigger>
-          <SelectContent className="bg-white">
-            <SelectItem value="any">Any Property Type</SelectItem>
-            {Object.entries(PropertyTypeIcons).map(([type, Icon]) => (
-              <SelectItem key={type} value={type}>
-                <div className="flex items-center">
-                  <Icon className="w-4 h-4 mr-2" />
-                  <span>{type}</span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-y-0 left-0 w-8 bg-linear-to-r from-white to-transparent transition-opacity",
+            edges.left ? "opacity-100" : "opacity-0",
+          )}
+        />
+        <div
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-y-0 right-0 w-8 bg-linear-to-l from-white to-transparent transition-opacity",
+            edges.right ? "opacity-100" : "opacity-0",
+          )}
+        />
       </div>
+
       {/* View Mode */}
-      <div className="flex shrink-0 items-center p-2">
+      <div className="hidden shrink-0 items-center p-2 sm:flex">
         <div className="flex border rounded-xl">
           <Button
             variant="ghost"
