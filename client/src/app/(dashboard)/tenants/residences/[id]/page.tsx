@@ -54,17 +54,16 @@ const ResidenceCard = ({
   return (
     <div className="bg-white rounded-xl shadow-md overflow-hidden p-6 flex-1 flex flex-col justify-between">
       {/* Header */}
-      <div className="flex gap-5">
+      <div className="flex gap-4 sm:gap-5">
         <Image
           src={imgSrc}
           alt={property.name}
           width={256}
           height={128}
-          className="w-64 h-32 object-cover rounded-xl"
+          className="w-[112px] h-[56px] shrink-0 object-cover rounded-xl sm:w-64 sm:h-32"
           onError={() => setImgSrc("/placeholder.jpg")}
         />
-
-        <div className="flex flex-col justify-between">
+        <div className="flex min-w-0 flex-col justify-between">
           <div>
             <div className="bg-green-500 w-fit text-white px-4 py-1 rounded-full text-sm font-semibold">
               Active Leases
