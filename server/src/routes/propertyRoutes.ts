@@ -21,7 +21,14 @@ import {
 import { optionalAuth } from "../middleware/authMiddleware";
 
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 15 * 1024 * 1024 },
+});
+const propertyUpload = upload.fields([
+  { name: "photos" },
+  { name: "panorama", maxCount: 1 },
+]);
 
 const router = express.Router();
 
@@ -46,14 +53,29 @@ router.get("/:id", getProperty);
 router.post(
   "/",
   authMiddleware(["manager"]),
-  upload.array("photos"),
+  propertyUpload,
   createProperty,
 );
 router.put(
   "/:id",
   authMiddleware(["manager"]),
-  upload.array("photos"),
+  propertyUpload,
   updateProperty,
+);
+
+router.use(
+  (
+    err: unknown,
+    _req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) => {
+    if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+      res.status(413).json({ message: "Each file must be 15 MB or smaller" });
+      return;
+    }
+    next(err);
+  },
 );
 
 export default router;

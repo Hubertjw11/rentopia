@@ -321,6 +321,13 @@ type PropertyInput = {
   pin: { longitude: number; latitude: number } | null;
 };
 
+const readUploads = (req: Request) => {
+  const files = req.files as
+    | Record<string, Express.Multer.File[] | undefined>
+    | undefined;
+  return { photos: files?.photos ?? [], panorama: files?.panorama?.[0] };
+};
+
 const parsePropertyBody = (
   body: Request["body"],
 ): { ok: true; value: PropertyInput } | { ok: false; message: string } => {
@@ -528,8 +535,8 @@ export const createProperty = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const files = (req.files as Express.Multer.File[] | undefined) ?? [];
-    if (files.length === 0) {
+    const { photos, panorama } = readUploads(req);
+    if (photos.length === 0) {
       res.status(400).json({ message: "At least one photo is required" });
       return;
     }
@@ -548,8 +555,11 @@ export const createProperty = async (
     }
 
     const photoUrls = await Promise.all(
-      files.map((file) => uploadFile(file, "properties")),
+      photos.map((file) => uploadFile(file, "properties")),
     );
+    const panoramaUrl = panorama
+      ? await uploadFile(panorama, "properties")
+      : null;
 
     const newProperty = await prisma.$transaction(async (tx) => {
       const [location] = await tx.$queryRaw<Location[]>`
@@ -564,6 +574,7 @@ export const createProperty = async (
           description: input.description,
           propertyType: input.propertyType,
           photoUrls,
+          panoramaUrl,
           locationId: location.id,
           managerCognitoId: req.user!.id,
           amenities: input.amenities,
@@ -639,8 +650,8 @@ export const updateProperty = async (
       return;
     }
 
-    const files = (req.files as Express.Multer.File[] | undefined) ?? [];
-    if (kept.length === 0 && files.length === 0) {
+    const { photos, panorama } = readUploads(req);
+    if (kept.length === 0 && photos.length === 0) {
       res.status(400).json({ message: "At least one photo is required" });
       return;
     }
@@ -652,8 +663,13 @@ export const updateProperty = async (
     }
 
     const uploaded = await Promise.all(
-      files.map((file) => uploadFile(file, "properties")),
+      photos.map((file) => uploadFile(file, "properties")),
     );
+    const panoramaUrl = panorama
+      ? await uploadFile(panorama, "properties")
+      : req.body.keepPanorama === "false"
+        ? null
+        : undefined;
 
     const updated = await prisma.$transaction(async (tx) => {
       await tx.$executeRaw`
@@ -674,6 +690,7 @@ export const updateProperty = async (
           description: input.description,
           propertyType: input.propertyType,
           photoUrls: [...kept, ...uploaded],
+          panoramaUrl,
           amenities: input.amenities,
           highlights: input.highlights,
           isPetsAllowed: input.isPetsAllowed,
