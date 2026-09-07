@@ -40,6 +40,7 @@ const NewProperty = () => {
       country: "",
       postalCode: "",
       pinConfirmedFor: "",
+      panorama: undefined,
     },
   });
 
@@ -57,6 +58,8 @@ const NewProperty = () => {
         files.forEach((file: File) => {
           formData.append("photos", file);
         });
+      } else if (key === "panorama") {
+        if (value instanceof File) formData.append("panorama", value);
       } else if (Array.isArray(value)) {
         formData.append(key, value.join(","));
       } else {

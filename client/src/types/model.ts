@@ -33,6 +33,7 @@ export type Property = {
   securityDeposit: number;
   applicationFee: number;
   photoUrls: string[];
+  panoramaUrl: string | null;
   amenities: string[];
   highlights: string[];
   isPetsAllowed: boolean;

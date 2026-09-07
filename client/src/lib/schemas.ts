@@ -44,6 +44,7 @@ const propertyFields = z.object({
   photoUrls: z
     .array(z.instanceof(File))
     .min(1, "At least one photo is required"),
+  panorama: z.instanceof(File).optional(),
   amenities: z
     .array(z.nativeEnum(AmenityEnum))
     .min(1, "Pick at least one amenity"),
@@ -76,6 +77,7 @@ export const propertyEditSchema = propertyFields
   .extend({
     photoUrls: z.array(z.instanceof(File)),
     keptPhotoUrls: z.array(z.string()),
+    keepPanorama: z.boolean(),
   })
   .refine((data) => data.keptPhotoUrls.length + data.photoUrls.length > 0, {
     message: "At least one photo is required",

@@ -1,7 +1,7 @@
-
 "use client";
 
 import { CustomFormField } from "@/components/FormField";
+import PanoramaField from "@/components/PanoramaField";
 import LocationPicker from "@/components/LocationPicker";
 import {
   AmenityEnum,
@@ -23,6 +23,8 @@ type PropertyFormFieldsProps = {
   resetToken?: number;
   existingPhotos?: string[];
   onRemoveExistingPhoto?: (url: string) => void;
+  existingPanorama?: string | null;
+  onRemoveExistingPanorama?: () => void;
   initialLongitude?: number;
   initialLatitude?: number;
 };
@@ -31,6 +33,8 @@ const PropertyFormFields = ({
   resetToken = 0,
   existingPhotos,
   onRemoveExistingPhoto,
+  existingPanorama,
+  onRemoveExistingPanorama,
   initialLongitude,
   initialLatitude,
 }: PropertyFormFieldsProps) => (
@@ -193,6 +197,12 @@ const PropertyFormFields = ({
         label={existingPhotos ? "Add more photos" : "Property Photos"}
         type="file"
         accept="image/*"
+      />
+      <hr className="my-6 border-gray-200" />
+      <PanoramaField
+        key={`panorama-${resetToken}`}
+        existingPanorama={existingPanorama}
+        onRemoveExisting={onRemoveExistingPanorama}
       />
     </div>
 

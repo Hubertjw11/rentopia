@@ -39,6 +39,8 @@ const EditPropertyForm = ({ property }: { property: Property }) => {
       isParkingIncluded: property.isParkingIncluded,
       photoUrls: [],
       keptPhotoUrls: property.photoUrls,
+      panorama: undefined,
+      keepPanorama: true,
       amenities: property.amenities as PropertyEditFormData["amenities"],
       highlights: property.highlights as PropertyEditFormData["highlights"],
       beds: property.beds,
@@ -63,6 +65,11 @@ const EditPropertyForm = ({ property }: { property: Property }) => {
     name: "keptPhotoUrls",
   });
 
+  const keepPanorama = useWatch({
+    control: form.control,
+    name: "keepPanorama",
+  });
+
   const removePhoto = (url: string) => {
     form.setValue(
       "keptPhotoUrls",
@@ -81,6 +88,8 @@ const EditPropertyForm = ({ property }: { property: Property }) => {
         });
       } else if (key === "keptPhotoUrls") {
         formData.append(key, JSON.stringify(value));
+      } else if (key === "panorama") {
+        if (value instanceof File) formData.append("panorama", value);
       } else if (Array.isArray(value)) {
         formData.append(key, value.join(","));
       } else {
@@ -118,6 +127,10 @@ const EditPropertyForm = ({ property }: { property: Property }) => {
             <PropertyFormFields
               existingPhotos={keptPhotoUrls}
               onRemoveExistingPhoto={removePhoto}
+              existingPanorama={keepPanorama ? property.panoramaUrl : null}
+              onRemoveExistingPanorama={() =>
+                form.setValue("keepPanorama", false, { shouldDirty: true })
+              }
               initialLongitude={property.location.coordinates.longitude}
               initialLatitude={property.location.coordinates.latitude}
             />

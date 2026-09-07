@@ -76,6 +76,7 @@ declare global {
 
   interface ImagePreviewsProps {
     images: string[];
+    panoramaUrl?: string | null;
   }
 
   interface PropertyDetailsProps {
