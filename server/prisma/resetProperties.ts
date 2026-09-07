@@ -41,6 +41,7 @@ type Listing = {
     securityDeposit: number;
     applicationFee: number;
     photoUrls: string[];
+    panoramaUrl?: string | null;
     amenities: Amenity[];
     highlights: Highlight[];
     isPetsAllowed: boolean;
@@ -140,7 +141,7 @@ const LISTINGS: Listing[] = [
       baths: 1,
       areaSqm: 65,
       propertyType: PropertyType.Apartment,
-      furnishing: null,
+      furnishing: Furnishing.Full,
       postedDate: new Date("2026-08-26T03:36:06.567Z"),
     },
   },
@@ -282,7 +283,7 @@ const LISTINGS: Listing[] = [
       baths: 2,
       areaSqm: 102,
       propertyType: PropertyType.Villa,
-      furnishing: null,
+      furnishing: Furnishing.Semi,
       postedDate: new Date("2026-08-26T06:27:29.662Z"),
     },
   },
